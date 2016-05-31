@@ -71,7 +71,7 @@ function preload_plugins(){
 }
 
 function load_plugins(){
-    var dbot = require("./discord_bot.js");
+    var dbot = require("./server.js");
     var commandCount = 0;
     for (var i = 0; i < plugin_folders.length; i++) {
         var plugin;

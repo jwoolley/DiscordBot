@@ -59,7 +59,7 @@ Make sure you also have your google server API key, which goes in the "youtube_a
 Before first run you will need to create an `auth.json` file. The email and password for a discord account are required. The other credentials are not required for the bot to run, but highly recommended as commands that depend on them will malfunction. See `auth.json.example`.
 
 To start the bot just run
-`node discord_bot.js`.
+`node server.js`.
 
 # Updates
 If you update the bot, please run `npm update` before starting it again. If you have

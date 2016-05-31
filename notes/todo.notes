@@ -1,0 +1,45 @@
+################### TODO –- Started 5/31/16 ###################
+
+* fork from discordbot repo and rebase with current changes
+** https://github.com/chalda/DiscordBot
+
+* cull extraneous features
+
+* refactor command code to accept list of perms/permsets in constructor
+** automatically check for a valid perm/permset on command, rather than coding to check per-command
+
+* add (file-based) config option for which commands to enable
+
+* permissions feature - check / add / revoke
+** retain in memory
+** save to mongo and load on startup
+** only admins can use feature
+** allow granting admin to other users? or maybe moderator
+*** perhaps govern with masteradmin perm
+*** masteradmin cannot have perms revoked
+** permsets/roles could include multiple perms
+
+* save credentials to db and attempt to load on startup.
+** provide command-line options for username+password.
+** can avoid storing plaintext credentials in auth.json file
+** also support other credentials/tokens (e.g. youtube API)
+*** load via json file passed as command line option
+*** store in DB on startup. user can then delete file or remove from git repo
+
+* encrypted auth token for GG user authentication
+** encrypt on profile page, include username/id
+** user messages encrypted token to bot, who authenticates
+** admin can run !checkauth command to see discord users' auth records
+*** store auth records in mongoDB
+**** include GG username, timestamp, (token, for debugging? store in DB at least)
+
+* playgame command
+** lists available games
+
+* guesscard game
+** show a snippet of magic card art. users guess which card by name
+** fetch image/name via CURL/API, crop image with imagemagick etc.
+** store in DB for future use  
+** max # of guesses per player / overall
+** !!guesscard moreguesses will allow addming more guesses
+*** could provied [nomoreguesses] option when starting game, for 'official' games

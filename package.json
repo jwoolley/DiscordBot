@@ -13,22 +13,28 @@
   "dependencies": {
     "d20": "^1.4.0",
     "discord.js": "<=5.2.x",
-    "querystring": "0.2.x"
-    , "underscore": "1.8.x"
-    , "winston": "1.0.x"
-    , "sinon": "1.14.x"
-    , "nock": "1.7.x"
-    , "wolfram": "0.3.x"
-    , "tumblr.js": "0.0.x"
-    , "youtube-node": "1.2.x"
-    , "google": "1.1.x"
-    , "google-images": "0.1.x"
-    , "imgflipper": "1.0.x"
-    , "wikijs": "0.1.x"
-    , "yahoo-finance": "0.2.x"
-    , "feedparser": "1.1.x"
-    , "html-to-text": "1.5.x"
-	, "npm":""
+    "querystring": "0.2.x",
+    "underscore": "1.8.x",
+    "winston": "1.0.x",
+    "sinon": "1.14.x",
+    "nock": "1.7.x",
+    "wolfram": "0.3.x",
+    "tumblr.js": "0.0.x",
+    "youtube-node": "1.2.x",
+    "google": "1.1.x",
+    "google-images": "0.1.x",
+    "imgflipper": "1.0.x",
+    "wikijs": "0.1.x",
+    "yahoo-finance": "0.2.x",
+    "feedparser": "1.1.x",
+    "html-to-text": "1.5.x",
+    "npm":"",
+
+    "mongodb": "~2.0",
+    "bluebird": "^3.3.4"
   },
-  "main": "discord_bot.js"
+  "scripts": {
+    "start": "node server.js"
+  },
+  "main": "server.js"
 }
