@@ -49,7 +49,8 @@ globals.config.diceRoll = {
     ]
   },
   matches:  [
-    { sides: 1000000, values: [1, 1000000] }
+    { sides: 20, values: [1, 20] }
+   /* { sides: 1000000, values: [1, 1000000] } */
   ]
 };
 
@@ -859,24 +860,14 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
       }
     } 
 
-    console.log('Approved roll userids: ' + globals.config.diceRoll.users.approved.map(user => user.id));
-    console.log('Author id: ' + msg.author.id);
-    console.log('Approved user: ' + (globals.config.diceRoll.users.approved.map(user => user.id).indexOf(msg.author.id) !== -1));
-    console.log('message: ' + msg.content.toLowerCase());
-    console.log('Matches: '+ (msg.content.toLowerCase().match(/<@\d+> rolled '\d+d\d+'/)));
-      // TODO: don't rely on existence of diceroll config data; this currently will crash the server w/o it.
+    // TODO: don't rely on existence of diceroll config data; this currently will crash the server w/o it.
     if (msg.author.id != bot.user.id && globals.config.diceRoll.users.approved.map(user => user.id).indexOf(msg.author.id) !== -1 
       && msg.content.toLowerCase().match(/<@\d+> rolled '\d+d\d+'/)) {
-        console.log('Found a roll: ' + msg.content);
         var match = msg.content.toLowerCase().match(/<@\d+> rolled '(\d+)d(\d+)' for ((\d+,?)+)/);
         if (match) {
           var numDice = parseInt(match[1]);
           var sides = parseInt(match[2]);
           var results = match[3].split(',').map(result => parseInt(result));
-
-          console.log('numdice: ' + numDice);
-          console.log('sides: ' + sides);
-          console.log('results: ' + results);
 
           if (globals.config.diceRoll.matches.map(match => match.sides).indexOf(sides) !== -1) {
             var targetValues = globals.config.diceRoll.matches.reduce(
@@ -885,18 +876,11 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
             // var matches =  targetValues.filter(target => results.indexOf(target) !== -1);
 
             var matches =  targetValues.filter(target => { 
-              console.log('TARGET: ' + target);
-              console.log('RESULTS: ' + results);
-              console.log('indexOf(TARGET)' + results.indexOf(target));
               return results.indexOf(target) !== -1;
             });
 
-
-            console.log('targetValues: ' + targetValues + ' (isArray: ' + Array.isArray(targetValues) + ') length: ' + targetValues.length);  
-            console.log('results: ' + results + ' (isArray: ' + Array.isArray(results) + ') length: ' + results.length);                     
-            console.log('matches: '+ matches + ' (isArray: ' + Array.isArray(matches) + ') length: ' + matches.length);
-
-            matches.forEach(match => { console.log('MATCH! ' + match); bot.sendMessage(msg.channel, '🎲 🎲 🎲 Rolled a ' + match + ' on ' + numDice + 'd' + sides + '! 🎲 🎲 🎲'); });
+            matches.forEach(match => bot.sendMessage(msg.channel, 
+              '🎲 🎲 🎲 Rolled a ' + match + ' on ' + numDice + ' d' + sides + (numDice > 1 ? 's' : '') + '! 🎲 🎲 🎲'));
           }
         }
     }
