@@ -1,7 +1,9 @@
 ################### TODO –- Started 5/31/16 ###################
 
-* fork from discordbot repo and rebase with current changes
-** https://github.com/chalda/DiscordBot
+### -> DONE
+
+### * fork from discordbot repo and rebase with current changes
+### ** https://github.com/chalda/DiscordBot
 
 * cull extraneous features
 
@@ -11,10 +13,15 @@
 * add (file-based) config option for which commands to enable
 
 * check die rolls
-** announce winner!
+### ** announce winner!
 ** keep track of low and high rolls
+** keep track of total number of rolls
+** keep track of low/high/total etc. for today (week? month?)
+** !rollstats command for listing all of these
+** persist to db of course
 *** and any others: doubles/triples, repeated digits, etc.
-** need to identify bots / dice command (so it can't by hacked by simple typing!)
+### ** need to identify bots / dice command (so it can't by hacked by simple typing!)
+
 
 * permissions feature - check / add / revoke
 ** retain in memory
