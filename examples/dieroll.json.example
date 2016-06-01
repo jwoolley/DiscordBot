@@ -1,0 +1,16 @@
+{
+  "users" : {
+    "approved" : [
+      { 
+        "nickname": "rollbot",
+        "id": "1234567890"
+      }
+    ]
+  },
+  "matches":  [
+    { 
+      "sides": 10000,
+      "values": [1, 10000] 
+    }
+  ]
+}
