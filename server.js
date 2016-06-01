@@ -40,21 +40,7 @@ var globals = {
   config: {}
 };
 
-
-//TODO: move to separate config file
-globals.config.diceRoll = { 
-  "users" : {
-    "approved" : [
-      { "nickname": "ggbot", "id": "163813963551866880" }
-    ]
-  },
-  matches:  [
-    { sides: 20, values: [1, 20] }
-   /* { sides: 1000000, values: [1, 1000000] } */
-  ]
-};
-
-var configs = ['auth', 'permissions', 'config'];
+var configs = ['auth', 'permissions', 'dieroll', 'config'];
 Promise.all(configs.map(config => loadConfig(config))).then(() => { 
   console.log(JSON.stringify(globals.config, null, '\t')) 
 
@@ -860,8 +846,8 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
       }
     } 
 
-    // TODO: don't rely on existence of diceroll config data; this currently will crash the server w/o it.
-    if (msg.author.id != bot.user.id && globals.config.diceRoll.users.approved.map(user => user.id).indexOf(msg.author.id) !== -1 
+    // TODO: don't rely on existence of dieroll config data; this currently will crash the server w/o it.
+    if (msg.author.id != bot.user.id && globals.config.dieroll.users.approved.map(user => user.id).indexOf(msg.author.id) !== -1 
       && msg.content.toLowerCase().match(/<@\d+> rolled '\d+d\d+'/)) {
         var match = msg.content.toLowerCase().match(/<@\d+> rolled '(\d+)d(\d+)' for ((\d+,?)+)/);
         if (match) {
@@ -869,8 +855,8 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
           var sides = parseInt(match[2]);
           var results = match[3].split(',').map(result => parseInt(result));
 
-          if (globals.config.diceRoll.matches.map(match => match.sides).indexOf(sides) !== -1) {
-            var targetValues = globals.config.diceRoll.matches.reduce(
+          if (globals.config.dieroll.matches.map(match => match.sides).indexOf(sides) !== -1) {
+            var targetValues = globals.config.dieroll.matches.reduce(
               (prev, match) => (prev || match.sides === sides ? match.values : undefined), undefined);
          
             // var matches =  targetValues.filter(target => results.indexOf(target) !== -1);
