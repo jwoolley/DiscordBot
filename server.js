@@ -846,6 +846,12 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
       }
     } 
 
+    console.log('Approved roll userids: ' + globals.config.dieroll.users.approved.map(user => user.id));
+    console.log('Author id: ' + msg.author.id);
+    console.log('Approved user: ' + (globals.config.dieroll.users.approved.map(user => user.id).indexOf(msg.author.id) !== -1));
+    console.log('message: ' + msg.content.toLowerCase());
+    console.log('Matches: '+ (msg.content.toLowerCase().match(/<@\d+> rolled '\d+d\d+'/)));
+ 
     // TODO: don't rely on existence of dieroll config data; this currently will crash the server w/o it.
     if (msg.author.id != bot.user.id && globals.config.dieroll.users.approved.map(user => user.id).indexOf(msg.author.id) !== -1 
       && msg.content.toLowerCase().match(/<@\d+> rolled '\d+d\d+'/)) {
@@ -854,6 +860,10 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
           var numDice = parseInt(match[1]);
           var sides = parseInt(match[2]);
           var results = match[3].split(',').map(result => parseInt(result));
+
+          console.log('numdice: ' + numDice);
+          console.log('sides: ' + sides);
+          console.log('results: ' + results);
 
           if (globals.config.dieroll.matches.map(match => match.sides).indexOf(sides) !== -1) {
             var targetValues = globals.config.dieroll.matches.reduce(
@@ -864,6 +874,10 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
             var matches =  targetValues.filter(target => { 
               return results.indexOf(target) !== -1;
             });
+
+            console.log('targetValues: ' + targetValues + ' (isArray: ' + Array.isArray(targetValues) + ') length: ' + targetValues.length);  
+            console.log('results: ' + results + ' (isArray: ' + Array.isArray(results) + ') length: ' + results.length);                     
+            console.log('matches: '+ matches + ' (isArray: ' + Array.isArray(matches) + ') length: ' + matches.length);
 
             matches.forEach(match => bot.sendMessage(msg.channel, 
               '🎲 🎲 🎲 Rolled a **' + match + '** on ' + numDice + ' d' + sides + (numDice > 1 ? 's' : '') + '! 🎲 🎲 🎲'));
