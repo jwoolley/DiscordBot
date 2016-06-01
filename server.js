@@ -40,6 +40,19 @@ var globals = {
   config: {}
 };
 
+
+//TODO: move to separate config file
+globals.config.diceRoll = { 
+  "users" : {
+    "approved" : [
+      { "nickname": "ggbot", "id": "163813963551866880" }
+    ]
+  },
+  matches:  [
+    { sides: 1000000, values: [1, 1000000] }
+  ]
+};
+
 var configs = ['auth', 'permissions', 'config'];
 Promise.all(configs.map(config => loadConfig(config))).then(() => { 
   console.log(JSON.stringify(globals.config, null, '\t')) 
@@ -532,6 +545,7 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
         bot.setChannelTopic(msg.channel,suffix);
       }
     },
+    /*
     "roll": {
           usage: "[# of sides] or [# of dice]d[# of sides]( + [# of dice]d[# of sides] + ...)",
           description: "roll one die with x sides, or multiple dice using d20 syntax. Default value is 10",
@@ -555,6 +569,7 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
               }
           }
       },
+      */
     "msg": {
       usage: "<user> <message to leave user>",
       description: "leaves a message for a user the next time they come online",
@@ -803,7 +818,19 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
       bot.sendMessage(msg.channel, randomElement(responses));
     } else if (msg.author.id != bot.user.id && msg.content.indexOf(messagePatterns.tableUnflip) !== -1) {
       bot.sendMessage(msg.channel, 'F this table! ' + messagePatterns.tableFlip);
-    } else if (msg.author.id != bot.user.id && msg.content.toLowerCase().indexOf('beetlejuice') !== -1) {
+    } else {
+      //message isn't a command or is from us
+          //drop our own messages to prevent feedback loops
+          if(msg.author == bot.user){
+              return;
+          }
+          
+          if (msg.author != bot.user && msg.isMentioned(bot.user)) {
+                  bot.sendMessage(msg.channel,msg.author + ", you called?");
+          }
+      }
+
+    if (msg.author.id != bot.user.id && msg.content.toLowerCase().indexOf('beetlejuice') !== -1) {
       var numNewBeetlejuices = countOccurrences(msg.content.toLowerCase(), 'beetlejuice');
       numNewBeetlejuices = Math.min(numNewBeetlejuices, 3 - beetlejuiceCount%3);
       beetlejuiceCount = (beetlejuiceCount + numNewBeetlejuices) % 6;
@@ -830,17 +857,49 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
           });
         });
       }
-    } else {
-      //message isn't a command or is from us
-          //drop our own messages to prevent feedback loops
-          if(msg.author == bot.user){
-              return;
+    } 
+
+    console.log('Approved roll userids: ' + globals.config.diceRoll.users.approved.map(user => user.id));
+    console.log('Author id: ' + msg.author.id);
+    console.log('Approved user: ' + (globals.config.diceRoll.users.approved.map(user => user.id).indexOf(msg.author.id) !== -1));
+    console.log('message: ' + msg.content.toLowerCase());
+    console.log('Matches: '+ (msg.content.toLowerCase().match(/<@\d+> rolled '\d+d\d+'/)));
+      // TODO: don't rely on existence of diceroll config data; this currently will crash the server w/o it.
+    if (msg.author.id != bot.user.id && globals.config.diceRoll.users.approved.map(user => user.id).indexOf(msg.author.id) !== -1 
+      && msg.content.toLowerCase().match(/<@\d+> rolled '\d+d\d+'/)) {
+        console.log('Found a roll: ' + msg.content);
+        var match = msg.content.toLowerCase().match(/<@\d+> rolled '(\d+)d(\d+)' for ((\d+,?)+)/);
+        if (match) {
+          var numDice = parseInt(match[1]);
+          var sides = parseInt(match[2]);
+          var results = match[3].split(',').map(result => parseInt(result));
+
+          console.log('numdice: ' + numDice);
+          console.log('sides: ' + sides);
+          console.log('results: ' + results);
+
+          if (globals.config.diceRoll.matches.map(match => match.sides).indexOf(sides) !== -1) {
+            var targetValues = globals.config.diceRoll.matches.reduce(
+              (prev, match) => (prev || match.sides === sides ? match.values : undefined), undefined);
+         
+            // var matches =  targetValues.filter(target => results.indexOf(target) !== -1);
+
+            var matches =  targetValues.filter(target => { 
+              console.log('TARGET: ' + target);
+              console.log('RESULTS: ' + results);
+              console.log('indexOf(TARGET)' + results.indexOf(target));
+              return results.indexOf(target) !== -1;
+            });
+
+
+            console.log('targetValues: ' + targetValues + ' (isArray: ' + Array.isArray(targetValues) + ') length: ' + targetValues.length);  
+            console.log('results: ' + results + ' (isArray: ' + Array.isArray(results) + ') length: ' + results.length);                     
+            console.log('matches: '+ matches + ' (isArray: ' + Array.isArray(matches) + ') length: ' + matches.length);
+
+            matches.forEach(match => { console.log('MATCH! ' + match); bot.sendMessage(msg.channel, '🎲 🎲 🎲 Rolled a ' + match + ' on ' + numDice + 'd' + sides + '! 🎲 🎲 🎲'); });
           }
-          
-          if (msg.author != bot.user && msg.isMentioned(bot.user)) {
-                  bot.sendMessage(msg.channel,msg.author + ", you called?");
-          }
-      }
+        }
+    }
   });
    
 
