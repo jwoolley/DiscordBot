@@ -10,6 +10,12 @@
 
 * add (file-based) config option for which commands to enable
 
+* check die rolls
+** announce winner!
+** keep track of low and high rolls
+*** and any others: doubles/triples, repeated digits, etc.
+** need to identify bots / dice command (so it can't by hacked by simple typing!)
+
 * permissions feature - check / add / revoke
 ** retain in memory
 ** save to mongo and load on startup

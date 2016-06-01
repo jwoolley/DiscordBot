@@ -23,14 +23,14 @@ try {
 }
 
 // try {
-// 	var yt = require("./youtube_plugin");
+// 	var yt = require("./plugins/youtube_plugin");
 // 	var youtube_plugin = new yt();
 // } catch(e){
 // 	console.log("couldn't load youtube plugin!\n"+e.stack);
 // }
 
 // try {
-// 	var wa = require("./wolfram_plugin");
+// 	var wa = require("./plugins/wolfram_plugin");
 // 	var wolfram_plugin = new wa();
 // } catch(e){
 // 	console.log("couldn't load wolfram plugin!\n"+e.stack);
