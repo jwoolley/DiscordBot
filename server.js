@@ -866,7 +866,7 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
             });
 
             matches.forEach(match => bot.sendMessage(msg.channel, 
-              '🎲 🎲 🎲 Rolled a ' + match + ' on ' + numDice + ' d' + sides + (numDice > 1 ? 's' : '') + '! 🎲 🎲 🎲'));
+              '🎲 🎲 🎲 Rolled a **' + match + '** on ' + numDice + ' d' + sides + (numDice > 1 ? 's' : '') + '! 🎲 🎲 🎲'));
           }
         }
     }
