@@ -5,13 +5,15 @@ var qs = require("querystring");
 var d20 = require("d20");
 var htmlToText = require('html-to-text');
 
+var MongoDb = require('./lib/mongo.js');
 var utils = require('./lib/utils');
-// var http = require('http');
-// http.createServer(function(request, response) {
-//   response.writeHead(200, {"Content-Type": "text/plain"});
-//   response.write("Hello from the magic tavern!");
-//   response.end();
-// }).listen(process.env.PORT || 8888);
+
+var http = require('http');
+http.createServer(function(request, response) {
+  response.writeHead(200, {"Content-Type": "text/plain"});
+  response.write("Hello from the magic tavern!");
+  response.end();
+}).listen(process.env.PORT || 8888);
 
 try {
 	var Discord = require("discord.js");
@@ -22,27 +24,19 @@ try {
 	process.exit();
 }
 
-// try {
-// 	var yt = require("./plugins/youtube_plugin");
-// 	var youtube_plugin = new yt();
-// } catch(e){
-// 	console.log("couldn't load youtube plugin!\n"+e.stack);
-// }
-
-// try {
-// 	var wa = require("./plugins/wolfram_plugin");
-// 	var wolfram_plugin = new wa();
-// } catch(e){
-// 	console.log("couldn't load wolfram plugin!\n"+e.stack);
-// }
-
 var globals = {
   config: {}
 };
 
-var configs = ['auth', 'permissions', 'dieroll', 'config'];
+var log = {
+  debug: function(msg) { if (globals.config.server.debug) { console.log(msg); } },
+  info: function(msg) { console.log(msg); },
+  ignore: function(msg) {}
+};
+
+var configs = ['server', 'auth', 'permissions', 'dieroll', 'config'];
 Promise.all(configs.map(config => loadConfig(config))).then(() => { 
-  console.log(JSON.stringify(globals.config, null, '\t')) 
+  // log.debug(JSON.stringify(globals.config, null, '\t')) 
 
   // Get authentication data
   var AuthDetails = globals.config.auth;
@@ -78,6 +72,63 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
   }
 
   var startTime = Date.now();
+
+  var testDice = function(mongo, collection) {
+    var DIE_SIZE = 20;
+
+    var getLowRoll = function() {
+      return mongo.findOne(collection, {'sides': DIE_SIZE})
+        .then(result => {
+          if (!result || !Array.isArray(result.rolls)) { return; }
+          return result.rolls.reduce((lowest, current) => { 
+            return Math.min(lowest, current.value); 
+          }, DIE_SIZE);
+        });
+    };
+
+    var getHighRoll = function() {
+      return mongo.findOne(collection, {'sides': DIE_SIZE})
+        .then(result => {
+          if (!result || !Array.isArray(result.rolls)) { return; }
+          return result.rolls.reduce((highest, current) => {
+            return Math.max(highest, current.value); 
+          }, 0);
+        });
+    };
+
+    return mongo.dumpTable(collection).then(result => log.ignore('table: ' + utils.node.inspect(result)))
+      .then(() => mongo.findOne(collection, { 'sides': DIE_SIZE }))
+      .then(result => {
+        if (!result) { 
+          log.debug('table not found. creating new table.');
+          result = { 'sides': DIE_SIZE, rolls: [] };
+        }
+        return result;
+      })
+      .then(result => {
+        var dieRoll = {
+          value: Math.floor(Math.random() * DIE_SIZE)  % DIE_SIZE + 1,
+          user: (Math.floor(Math.random() * 100000)  % 100000 + 10000).toString(),
+          time: Date.now()
+        };
+        result.rolls.push(dieRoll);
+
+        //log.debug('Inserting row:' + JSON.stringify(result));
+        return mongo.updateRow(collection, { 'sides': DIE_SIZE }, { rolls: result.rolls }, true);
+      })
+      .catch(e => log.info('e: ' + e))
+      .then(() => mongo.dumpTable(collection).then(result => log.ignore('table: ' + utils.node.inspect(result))))
+      .then(() => getLowRoll()).then(lowest => log.debug('lowest roll: ' + lowest))
+      .then(() => getHighRoll()).then(highest => log.debug('highest roll: ' + highest))      
+      .finally(() => mongo.close());
+  }
+
+  var mongo = new MongoDb(globals.config.dieroll.mongo.host,
+    globals.config.dieroll.mongo.port, globals.config.dieroll.mongo.db)
+
+  mongo.open()
+    .then(mongo => testDice(mongo, globals.config.dieroll.mongo.collection))
+    .finally(() => process.exit());
 
   var giphy_config = {
       "api_key": "dc6zaTOxFJmzC",
