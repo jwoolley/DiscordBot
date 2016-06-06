@@ -2,15 +2,21 @@
   "users" : {
     "approved" : [
       { 
-        "nickname": "rollbot",
-        "id": "1234567890"
+        "nickname": "ggbot",
+        "id": "163813963551866880"
       }
     ]
   },
   "matches":  [
     { 
-      "sides": 10000,
-      "values": [1, 10000] 
+      "sides": 1000000,
+      "values": [1, 1000000] 
     }
-  ]
+  ],
+  "mongo": {
+    "host": "127.0.0.1",
+    "port": "27017",
+    "db": "testDice",
+    "collection": "dieRolls"
+  }
 }
