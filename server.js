@@ -976,11 +976,13 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
   }
 
   function handleDieRolls(results, numSides, channel, userId) {
-    log.debug('handleDieRolls | results: ' + results + '; numSides: ' + numSides + '; channel: ' + channel + '; userId: ' + userId);
+    log.ignore('handleDieRolls | results: ' + results + '; numSides: ' + numSides + '; channel: ' + channel + '; userId: ' + userId);
 
     if (!globals.chatData.dieRolls[numSides]) {
       globals.chatData.dieRolls[numSides] = {};
     }
+
+    var numDice = results.length;
 
     var timestamp = Date.now();
 
@@ -993,7 +995,7 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
       };
     });
 
-    log.debug('inserting rolls: ' + JSON.stringify(records));
+    log.ignore('inserting rolls: ' + JSON.stringify(records));
 
     try {
       globals.db.mongo.insertMany(globals.config.dieroll.mongo.collection, records);
@@ -1001,10 +1003,10 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
       globals.chatData.dieRolls.highest = globals.chatData.dieRolls[numSides].highest ? globals.chatData.dieRolls[numSides].highest : 0;
       globals.chatData.dieRolls.lowest = globals.chatData.dieRolls[numSides].lowest ? globals.chatData.dieRolls[numSides].lowest: Number.MAX_SAFE_INTEGER;
 
-      if (globals.config.dieroll.matches.map(match => match.sides).indexOf(numSides) !== -1) {
+      if (globals.config.dieroll.matches.map(match => match.sides).indexOf(parseInt(numSides)) !== -1) {
         // test for min or max roll
         var targetValues = globals.config.dieroll.matches.reduce(
-          (prev, match) => (prev || match.sides === sides ? match.values : undefined), undefined);
+          (prev, match) => (prev || match.sides === parseInt(numSides) ? match.values : undefined), undefined);
    
         var matches = targetValues.filter(target => { 
           return results.indexOf(target) !== -1;
@@ -1014,7 +1016,25 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
           '🎲 🎲 🎲 Rolled a **' + match + '** on ' + results.length + ' d' + sides + (numDice > 1 ? 's' : '') + '! 🎲 🎲 🎲'));
 
         // test for highest or lowest roll so far
-      } 
+        var sorted = results.sort((a,b) => a - b);
+        var lowest = sorted[0];
+        var highest = sorted[results.length - 1];
+
+        log.debug('Lowest: ' + lowest + ', Highest: ' + highest);
+        log.debug('Global lowest: ' + globals.chatData.dieRolls[numSides].lowest + ', Global highest: ' + globals.chatData.dieRolls[numSides].highest);
+
+        if (lowest < globals.chatData.dieRolls[numSides].lowest) {
+          globals.chatData.dieRolls[numSides].lowest = lowest;
+          bot.sendMessage(channel, 
+          '🎲 🎲 🎲 Record broken for the lowest recorded roll! Rolled a **' + lowest + '** on ' + results.length + ' d' + numSides + (numDice > 1 ? 's' : '') + '! 🎲 🎲 🎲')
+        }
+
+        if (highest > globals.chatData.dieRolls[numSides].highest) {
+          globals.chatData.dieRolls[numSides].highest = highest;
+          bot.sendMessage(channel, 
+          '🎲 🎲 🎲 Record broken for the highest recorded roll! Rolled a **' + highest + '** on ' + results.length + ' d' + numSides + (numDice > 1 ? 's' : '') + '! 🎲 🎲 🎲')
+        }        
+      }
     } catch (e) {
       log.error('Error saving dieroll data: ' + e);
     }
