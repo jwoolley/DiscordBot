@@ -575,32 +575,34 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
         bot.setChannelTopic(msg.channel,suffix);
       }
     },
-    "roll": {
+    "testroll": {
       usage: "[# of sides] or [# of dice]d[# of sides]( + [# of dice]d[# of sides] + ...)",
       description: "roll one die with x sides, or multiple dice using d20 syntax. Default value is 10",
       process: function(bot,msg,suffix) {
         if (suffix.split("d").length <= 1) {
           var sides = suffix || 10;
           var roll = d20.verboseRoll(sides);
-          bot.sendMessage(msg.channel,msg.author + " rolled '" + suffix + "' for " + roll, 
+          bot.sendMessage(msg.channel, msg.author + " rolled '" + suffix + "' for " + roll, () => {
             setTimeout(function() {
-              handleDieRolls(roll[0], sides, msg.channel, msg.author.id);  
-            }, 3000));
+              handleDieRolls(roll, sides, msg.channel, msg.author.id);  
+            }, 3000);
+          });
         }  
         else {
-          var match = suffix.match(/(\d+)?d(\d+)/);
+          var match = suffix.match(/^\s*(\d+)?d(\d+)\s*/);
           if (match) {
             var numDice = match[1] ? match[1] : 1;
             var numSides = match[2];
          
             var rolls = d20.verboseRoll(suffix);
-            bot.sendMessage(msg.channel,":game_die: " + msg.author + " rolled '" + match[0] + "' for " + rolls);
-            handleDieRolls(rolls, numSides, msg.channel, msg.author.id,
+            bot.sendMessage(msg.channel, ":game_die: " + msg.author + " rolled '" + match[0] + "' for " + rolls, () => {
+              if (roll[0] !== undefined)
               setTimeout(function() {
                 handleDieRolls(roll[0], sides, msg.channel, msg.author.id);  
-              }, 3000));  
+              }, 3000);
+            });
           } else {
-            bot.sendMessage(msg.channel, msg.author + " invalid number of sides specified: " + suffix.split("d")[1] + "!  :game_die: :game_die: :game_die: :game_die:");
+            bot.sendMessage(msg.channel, msg.author + " :game_die: invalid die roll specified :bangbang:");
           }
         }
       }
@@ -1011,14 +1013,12 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
 
       if (globals.config.dieroll.matches.map(match => match.sides).indexOf(parseInt(numSides)) !== -1) {
         // test for min or max roll
-        var targetValues = globals.config.dieroll.matches.reduce(
-          (prev, match) => (prev || match.sides === parseInt(numSides) ? match.values : undefined), undefined);
-   
-        var matches = targetValues.filter(target => { 
+        var targets = [1, numSides];
+        var matches = targets.filter(target => { 
           return results.indexOf(target) !== -1;
         });
 
-        matches.forEach(match => bot.sendMessage(channel, 
+        [matches].forEach(match => bot.sendMessage(channel, 
           '🎲 🎲 🎲 Rolled a **' + match + '** on ' + results.length + ' d' + sides + (numDice > 1 ? 's' : '') + '! 🎲 🎲 🎲'));
 
         // test for highest or lowest roll so far
@@ -1032,13 +1032,13 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
         if (lowest < globals.chatData.dieRolls[numSides].lowest) {
           globals.chatData.dieRolls[numSides].lowest = lowest;
           bot.sendMessage(channel, 
-          '🎲 🎲 🎲 Record broken for the lowest recorded roll! Rolled a **' + lowest + '** on ' + results.length + ' d' + numSides + (numDice > 1 ? 's' : '') + '. 🎲 🎲 🎲')
+          '🎲 Record broken for the lowest recorded roll! Rolled a **' + lowest + '** on ' + results.length + ' d' + numSides + (numDice > 1 ? 's' : '') + ' 🎲')
         }
 
         if (highest > globals.chatData.dieRolls[numSides].highest) {
           globals.chatData.dieRolls[numSides].highest = highest;
           bot.sendMessage(channel, 
-          '🎲 🎲 🎲 Record broken for the highest recorded roll! Rolled a **' + highest + '** on ' + results.length + ' d' + numSides + (numDice > 1 ? 's' : '') + '. 🎲 🎲 🎲')
+          '🎲 Record broken for the highest recorded roll! Rolled a **' + highest + '** on ' + results.length + ' d' + numSides + (numDice > 1 ? 's' : '') + ' 🎲')
         }        
       }
     } catch (e) {
