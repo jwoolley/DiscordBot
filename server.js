@@ -25,26 +25,29 @@ try {
 }
 
 var globals = {
-  config: {}
+  config: {},
+  chatData: {},
+  db: {}
 };
 
 var log = {
   debug: function(msg) { if (globals.config.server.debug) { console.log(msg); } },
   info: function(msg) { console.log(msg); },
+  warn: function(msg) { console.log(msg); },  
+  error: function(msg) { console.log(msg); },  
   ignore: function(msg) {}
 };
 
 var configs = ['server', 'auth', 'permissions', 'dieroll', 'config'];
 Promise.all(configs.map(config => loadConfig(config))).then(() => { 
   // log.debug(JSON.stringify(globals.config, null, '\t')) 
-
   // Get authentication data
   var AuthDetails = globals.config.auth;
 
   // Load custom permissions
   var Permissions = globals.config.permissions;
 
-  Permissions.checkPermission = function (user,permission){
+  Permissions.checkPermission = function (user,permission) {
     try {
       var allowed = false;
       try{
@@ -73,62 +76,50 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
 
   var startTime = Date.now();
 
-  var testDice = function(mongo, collection) {
-    var DIE_SIZE = 20;
-
-    var getLowRoll = function() {
-      return mongo.findOne(collection, {'sides': DIE_SIZE})
+  var initDieRollData = function(mongo, collection) {
+    var getLowRoll = function(size) {
+      return mongo.dumpTable(collection)
         .then(result => {
-          if (!result || !Array.isArray(result.rolls)) { return; }
-          return result.rolls.reduce((lowest, current) => { 
-            return Math.min(lowest, current.value); 
-          }, DIE_SIZE);
+          if (!result) { return; }
+          return result
+            .filter(roll => roll.sides == size)
+            .reduce((lowest, current) => { 
+              return Math.min(lowest, current.value); 
+            }, size);
         });
     };
 
-    var getHighRoll = function() {
-      return mongo.findOne(collection, {'sides': DIE_SIZE})
+    var getHighRoll = function(size) {
+      return mongo.dumpTable(collection)
         .then(result => {
-          if (!result || !Array.isArray(result.rolls)) { return; }
-          return result.rolls.reduce((highest, current) => {
-            return Math.max(highest, current.value); 
-          }, 0);
+          if (!result) { return; }
+          return result
+            .filter(roll => roll.sides == size)
+            .reduce((highest, current) => {
+              return Math.max(highest, current.value); 
+            }, 0);
         });
     };
 
-    return mongo.dumpTable(collection).then(result => log.ignore('table: ' + utils.node.inspect(result)))
-      .then(() => mongo.findOne(collection, { 'sides': DIE_SIZE }))
-      .then(result => {
-        if (!result) { 
-          log.debug('table not found. creating new table.');
-          result = { 'sides': DIE_SIZE, rolls: [] };
-        }
-        return result;
-      })
-      .then(result => {
-        var dieRoll = {
-          value: Math.floor(Math.random() * DIE_SIZE)  % DIE_SIZE + 1,
-          user: (Math.floor(Math.random() * 100000)  % 100000 + 10000).toString(),
-          time: Date.now()
-        };
-        result.rolls.push(dieRoll);
+    globals.chatData.dieRolls = {};
 
-        //log.debug('Inserting row:' + JSON.stringify(result));
-        return mongo.updateRow(collection, { 'sides': DIE_SIZE }, { rolls: result.rolls }, true);
-      })
-      .catch(e => log.info('e: ' + e))
-      .then(() => mongo.dumpTable(collection).then(result => log.ignore('table: ' + utils.node.inspect(result))))
-      .then(() => getLowRoll()).then(lowest => log.debug('lowest roll: ' + lowest))
-      .then(() => getHighRoll()).then(highest => log.debug('highest roll: ' + highest))      
-      .finally(() => mongo.close());
-  }
+    globals.config.dieroll.matches.forEach(entry => {
+      var size = entry.sides;
+      globals.chatData.dieRolls[size] = { lowest: size, highest: 1 };
 
-  var mongo = new MongoDb(globals.config.dieroll.mongo.host,
-    globals.config.dieroll.mongo.port, globals.config.dieroll.mongo.db)
+      return mongo.dumpTable(collection).then(result => log.ignore('table: ' + utils.node.inspect(result)))
+        .then(() => mongo.dumpTable(collection).then(result => log.ignore('table: ' + utils.node.inspect(result))))
+        .then(() => getLowRoll(size)).then(lowest => { log.debug('lowest roll: ' + lowest); globals.chatData.dieRolls[size].lowest = lowest; })
+        .then(() => getHighRoll(size)).then(highest => { log.debug('highest roll: ' + highest);  globals.chatData.dieRolls[size].highest = highest; })      
+        .catch(e => log.info('e: ' + e));
+    });
+  };
 
-  mongo.open()
-    .then(mongo => testDice(mongo, globals.config.dieroll.mongo.collection))
-    .finally(() => process.exit());
+  globals.db.mongo = new MongoDb(globals.config.dieroll.mongo.host,
+    globals.config.dieroll.mongo.port, globals.config.dieroll.mongo.db);
+
+  globals.db.mongo.open()
+    .then(mongo => initDieRollData(globals.db.mongo, globals.config.dieroll.mongo.collection), e => log.error('Could not open mongodb: ' + e));
 
   var giphy_config = {
       "api_key": "dc6zaTOxFJmzC",
@@ -583,31 +574,31 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
         bot.setChannelTopic(msg.channel,suffix);
       }
     },
-    /*
     "roll": {
-          usage: "[# of sides] or [# of dice]d[# of sides]( + [# of dice]d[# of sides] + ...)",
-          description: "roll one die with x sides, or multiple dice using d20 syntax. Default value is 10",
-          process: function(bot,msg,suffix) {
-              if (suffix.split("d").length <= 1) {
-                  bot.sendMessage(msg.channel,msg.author + " rolled a " + d20.roll(suffix || "10"));
-              }  
-              else if (suffix.split("d").length > 1) {
-                  var eachDie = suffix.split("+");
-                  var passing = 0;
-                  for (var i = 0; i < eachDie.length; i++){
-                      if (eachDie[i].split("d")[0] < 50) {
-                          passing += 1;
-                      };
-                  }
-                  if (passing == eachDie.length) {
-                      bot.sendMessage(msg.channel,msg.author + " rolled a " + d20.roll(suffix));
-                  }  else {
-                      bot.sendMessage(msg.channel,msg.author + " tried to roll too many dice at once!");
-                  }
-              }
+      usage: "[# of sides] or [# of dice]d[# of sides]( + [# of dice]d[# of sides] + ...)",
+      description: "roll one die with x sides, or multiple dice using d20 syntax. Default value is 10",
+      process: function(bot,msg,suffix) {
+        if (suffix.split("d").length <= 1) {
+          var sides = suffix || 10;
+          var roll = d20.verboseRoll(sides);
+          bot.sendMessage(msg.channel,msg.author + " rolled '" + suffix + "' for " + roll);
+          handleDieRolls(roll[0], sides, msg.channel, msg.author.id);  
+        }  
+        else {
+          var match = suffix.match(/(\d+)?d(\d+)/);
+          if (match) {
+            var numDice = match[1] ? match[1] : 1;
+            var numSides = match[2];
+         
+            var rolls = d20.verboseRoll(suffix);
+            bot.sendMessage(msg.channel,":game_die: " + msg.author + " rolled '" + match[0] + "' for " + rolls);
+            handleDieRolls(rolls, numSides, msg.channel, msg.author.id);  
+          } else {
+            bot.sendMessage(msg.channel, msg.author + " invalid number of sides specified: " + suffix.split("d")[1] + "!  :game_die: :game_die: :game_die: :game_die:");
           }
-      },
-      */
+        }
+      }
+    },
     "msg": {
       usage: "<user> <message to leave user>",
       description: "leaves a message for a user the next time they come online",
@@ -906,18 +897,10 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
           var sides = parseInt(match[2]);
           var results = match[3].split(',').map(result => parseInt(result));
 
-          var map = globals.config.dieroll.matches.map(match => match.sides);
-
-          if (globals.config.dieroll.matches.map(match => match.sides).indexOf(sides) !== -1) {
-            var targetValues = globals.config.dieroll.matches.reduce(
-              (prev, match) => (prev || match.sides === sides ? match.values : undefined), undefined);
-       
-            var matches =  targetValues.filter(target => { 
-              return results.indexOf(target) !== -1;
-            });
-
-            matches.forEach(match => bot.sendMessage(msg.channel, 
-              '🎲 🎲 🎲 Rolled a **' + match + '** on ' + numDice + ' d' + sides + (numDice > 1 ? 's' : '') + '! 🎲 🎲 🎲'));
+          if (numDice !== results.length) {
+            log.warn('Roll message had mismatched number of dice. reported # of dice: ' + sides + '; actual # of sides: ' + results.length + '; full message: ' + msg.content);
+          } else {
+            handleDieRolls(results, sides, msg.channel, msg.author.id);
           }
         }
     }
@@ -990,6 +973,51 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
       return;            
     }
     return channels[0];
+  }
+
+  function handleDieRolls(results, numSides, channel, userId) {
+    log.debug('handleDieRolls | results: ' + results + '; numSides: ' + numSides + '; channel: ' + channel + '; userId: ' + userId);
+
+    if (!globals.chatData.dieRolls[numSides]) {
+      globals.chatData.dieRolls[numSides] = {};
+    }
+
+    var timestamp = Date.now();
+
+    var records = results.map(result => {
+      return {
+        value: result,
+        sides: numSides,
+        user: userId,
+        time: timestamp
+      };
+    });
+
+    log.debug('inserting rolls: ' + JSON.stringify(records));
+
+    try {
+      globals.db.mongo.insertMany(globals.config.dieroll.mongo.collection, records);
+
+      globals.chatData.dieRolls.highest = globals.chatData.dieRolls[numSides].highest ? globals.chatData.dieRolls[numSides].highest : 0;
+      globals.chatData.dieRolls.lowest = globals.chatData.dieRolls[numSides].lowest ? globals.chatData.dieRolls[numSides].lowest: Number.MAX_SAFE_INTEGER;
+
+      if (globals.config.dieroll.matches.map(match => match.sides).indexOf(numSides) !== -1) {
+        // test for min or max roll
+        var targetValues = globals.config.dieroll.matches.reduce(
+          (prev, match) => (prev || match.sides === sides ? match.values : undefined), undefined);
+   
+        var matches = targetValues.filter(target => { 
+          return results.indexOf(target) !== -1;
+        });
+
+        matches.forEach(match => bot.sendMessage(channel, 
+          '🎲 🎲 🎲 Rolled a **' + match + '** on ' + results.length + ' d' + sides + (numDice > 1 ? 's' : '') + '! 🎲 🎲 🎲'));
+
+        // test for highest or lowest roll so far
+      } 
+    } catch (e) {
+      log.error('Error saving dieroll data: ' + e);
+    }
   }
 
   function get_gif(tags, func) {
