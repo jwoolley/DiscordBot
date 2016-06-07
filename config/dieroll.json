@@ -9,14 +9,14 @@
   },
   "matches":  [
     { 
-      "sides": 1000,
-      "values": [1, 1000] 
+      "sides": 1000000,
+      "values": [1, 1000000] 
     }
   ],
   "mongo": {
     "host": "127.0.0.1",
     "port": "27017",
-    "db": "testDice",
-    "collection": "dieRolls"
+    "db": "chatdata",
+    "collection": "dierolls"
   }
 }
