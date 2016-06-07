@@ -580,11 +580,11 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
       description: "roll one die with x sides, or multiple dice using d20 syntax. Default value is 10",
       process: function(bot,msg,suffix) {
         if (suffix.split("d").length <= 1) {
-          var sides = suffix || 10;
-          var roll = d20.verboseRoll(sides);
+          var numSides = suffix || 10;
+          var roll = d20.verboseRoll(numSides);
           bot.sendMessage(msg.channel, msg.author + " rolled '" + suffix + "' for " + roll, () => {
             setTimeout(function() {
-              handleDieRolls(roll, sides, msg.channel, msg.author.id);  
+              handleDieRolls(roll, numSides, msg.channel, msg.author.id);  
             }, 3000);
           });
         }  
@@ -596,13 +596,13 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
          
             var rolls = d20.verboseRoll(suffix);
             bot.sendMessage(msg.channel, ":game_die: " + msg.author + " rolled '" + match[0] + "' for " + rolls, () => {
-              if (roll[0] !== undefined)
+              if (rolls && rolls.length > 0)
               setTimeout(function() {
-                handleDieRolls(roll[0], sides, msg.channel, msg.author.id);  
+                handleDieRolls(rolls, numSides, msg.channel, msg.author.id);  
               }, 3000);
             });
           } else {
-            bot.sendMessage(msg.channel, msg.author + " :game_die: invalid die roll specified :bangbang:");
+            bot.sendMessage(msg.channel, msg.author + " :game_die: invalid die roll specified! :game_die:");
           }
         }
       }
@@ -1018,8 +1018,8 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
           return results.indexOf(target) !== -1;
         });
 
-        [matches].forEach(match => bot.sendMessage(channel, 
-          '🎲 🎲 🎲 Rolled a **' + match + '** on ' + results.length + ' d' + sides + (numDice > 1 ? 's' : '') + '! 🎲 🎲 🎲'));
+        matches.forEach(match => bot.sendMessage(channel, 
+          '🎲 🎲 🎲 Rolled a **' + match + '** on ' + results.length + ' d' + numSides + (numDice > 1 ? 's' : '') + '! 🎲 🎲 🎲'));
 
         // test for highest or lowest roll so far
         var sorted = results.sort((a,b) => a - b);
