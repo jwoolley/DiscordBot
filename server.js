@@ -1030,15 +1030,17 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
         log.debug('Global lowest: ' + globals.chatData.dieRolls[numSides].lowest + ', Global highest: ' + globals.chatData.dieRolls[numSides].highest);
 
         if (lowest < globals.chatData.dieRolls[numSides].lowest) {
+          var previousLowest = globals.chatData.dieRolls[numSides].lowest;
           globals.chatData.dieRolls[numSides].lowest = lowest;
           bot.sendMessage(channel, 
-          '🎲 Record broken for the lowest recorded roll! Rolled a **' + lowest + '** on ' + results.length + ' d' + numSides + (numDice > 1 ? 's' : '') + ' 🎲')
+          '🎲 Record broken for the lowest recorded d' + numSides + ' roll! Rolled a **' + lowest + '**. Previous low: ' + previousLowest + ' 🎲')
         }
 
-        if (highest > globals.chatData.dieRolls[numSides].highest) {
+        if (highest > globals.chatData.dieRolls[numSides].highest) {          
+          var previousHighest = globals.chatData.dieRolls[numSides].highest;
           globals.chatData.dieRolls[numSides].highest = highest;
           bot.sendMessage(channel, 
-          '🎲 Record broken for the highest recorded roll! Rolled a **' + highest + '** on ' + results.length + ' d' + numSides + (numDice > 1 ? 's' : '') + ' 🎲')
+          '🎲 Record broken for the highest recorded d' + numSides + ' roll! Rolled a **' + highest + '**. Previous high: ' + previousHighest + ' 🎲')
         }        
       }
     } catch (e) {
