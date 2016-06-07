@@ -583,9 +583,9 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
           var sides = suffix || 10;
           var roll = d20.verboseRoll(sides);
           bot.sendMessage(msg.channel,msg.author + " rolled '" + suffix + "' for " + roll, 
-            function() {
+            setTimeout(function() {
               handleDieRolls(roll[0], sides, msg.channel, msg.author.id);  
-            });
+            }, 3000));
         }  
         else {
           var match = suffix.match(/(\d+)?d(\d+)/);
@@ -596,9 +596,9 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
             var rolls = d20.verboseRoll(suffix);
             bot.sendMessage(msg.channel,":game_die: " + msg.author + " rolled '" + match[0] + "' for " + rolls);
             handleDieRolls(rolls, numSides, msg.channel, msg.author.id,
-              function() {
+              setTimeout(function() {
                 handleDieRolls(roll[0], sides, msg.channel, msg.author.id);  
-              });  
+              }, 3000));  
           } else {
             bot.sendMessage(msg.channel, msg.author + " invalid number of sides specified: " + suffix.split("d")[1] + "!  :game_die: :game_die: :game_die: :game_die:");
           }
@@ -1032,13 +1032,13 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
         if (lowest < globals.chatData.dieRolls[numSides].lowest) {
           globals.chatData.dieRolls[numSides].lowest = lowest;
           bot.sendMessage(channel, 
-          '🎲 🎲 🎲 Record broken for the lowest recorded roll! Rolled a **' + lowest + '** on ' + results.length + ' d' + numSides + (numDice > 1 ? 's' : '') + '! 🎲 🎲 🎲')
+          '🎲 🎲 🎲 Record broken for the lowest recorded roll! Rolled a **' + lowest + '** on ' + results.length + ' d' + numSides + (numDice > 1 ? 's' : '') + '. 🎲 🎲 🎲')
         }
 
         if (highest > globals.chatData.dieRolls[numSides].highest) {
           globals.chatData.dieRolls[numSides].highest = highest;
           bot.sendMessage(channel, 
-          '🎲 🎲 🎲 Record broken for the highest recorded roll! Rolled a **' + highest + '** on ' + results.length + ' d' + numSides + (numDice > 1 ? 's' : '') + '! 🎲 🎲 🎲')
+          '🎲 🎲 🎲 Record broken for the highest recorded roll! Rolled a **' + highest + '** on ' + results.length + ' d' + numSides + (numDice > 1 ? 's' : '') + '. 🎲 🎲 🎲')
         }        
       }
     } catch (e) {
