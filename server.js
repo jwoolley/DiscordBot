@@ -109,6 +109,7 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
 
       return mongo.dumpTable(collection).then(result => log.ignore('table: ' + utils.node.inspect(result)))
         .then(() => mongo.dumpTable(collection).then(result => log.ignore('table: ' + utils.node.inspect(result))))
+        .then(() => log.debug('Finding historical lowest and highest rolls for d' + size))
         .then(() => getLowRoll(size)).then(lowest => { log.debug('lowest roll: ' + lowest); globals.chatData.dieRolls[size].lowest = lowest; })
         .then(() => getHighRoll(size)).then(highest => { log.debug('highest roll: ' + highest);  globals.chatData.dieRolls[size].highest = highest; })      
         .catch(e => log.info('e: ' + e));
@@ -581,8 +582,10 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
         if (suffix.split("d").length <= 1) {
           var sides = suffix || 10;
           var roll = d20.verboseRoll(sides);
-          bot.sendMessage(msg.channel,msg.author + " rolled '" + suffix + "' for " + roll);
-          handleDieRolls(roll[0], sides, msg.channel, msg.author.id);  
+          bot.sendMessage(msg.channel,msg.author + " rolled '" + suffix + "' for " + roll, 
+            function() {
+              handleDieRolls(roll[0], sides, msg.channel, msg.author.id);  
+            });
         }  
         else {
           var match = suffix.match(/(\d+)?d(\d+)/);
@@ -592,7 +595,10 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
          
             var rolls = d20.verboseRoll(suffix);
             bot.sendMessage(msg.channel,":game_die: " + msg.author + " rolled '" + match[0] + "' for " + rolls);
-            handleDieRolls(rolls, numSides, msg.channel, msg.author.id);  
+            handleDieRolls(rolls, numSides, msg.channel, msg.author.id,
+              function() {
+                handleDieRolls(roll[0], sides, msg.channel, msg.author.id);  
+              });  
           } else {
             bot.sendMessage(msg.channel, msg.author + " invalid number of sides specified: " + suffix.split("d")[1] + "!  :game_die: :game_die: :game_die: :game_die:");
           }
@@ -1000,8 +1006,8 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
     try {
       globals.db.mongo.insertMany(globals.config.dieroll.mongo.collection, records);
 
-      globals.chatData.dieRolls.highest = globals.chatData.dieRolls[numSides].highest ? globals.chatData.dieRolls[numSides].highest : 0;
-      globals.chatData.dieRolls.lowest = globals.chatData.dieRolls[numSides].lowest ? globals.chatData.dieRolls[numSides].lowest: Number.MAX_SAFE_INTEGER;
+      globals.chatData.dieRolls[numSides].highest = globals.chatData.dieRolls[numSides].highest ? globals.chatData.dieRolls[numSides].highest : 0;
+      globals.chatData.dieRolls[numSides].lowest = globals.chatData.dieRolls[numSides].lowest ? globals.chatData.dieRolls[numSides].lowest: Number.MAX_SAFE_INTEGER;
 
       if (globals.config.dieroll.matches.map(match => match.sides).indexOf(parseInt(numSides)) !== -1) {
         // test for min or max roll
