@@ -1101,16 +1101,17 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
 
     if (msg.author.id != bot.user.id && globals.config.dieroll.users.approved.map(user => user.id).indexOf(msg.author.id) !== -1 
       && msg.content.toLowerCase().match(/<@\d+> rolled '\d+d\d+'/)) {
-        var match = msg.content.toLowerCase().match(/<@\d+> rolled '(\d+)d(\d+)' for ((\d+,?)+)/);
+        var match = msg.content.toLowerCase().match(/<@(\d+)> rolled '(\d+)d(\d+)' for ((\d+,?)+)/);
         if (match) {
-          var numDice = parseInt(match[1]);
-          var sides = parseInt(match[2]);
-          var results = match[3].split(',').map(result => parseInt(result));
+          var userId = parseInt(match[1])
+          var numDice = parseInt(match[2]);
+          var sides = parseInt(match[3]);
+          var results = match[4].split(',').map(result => parseInt(result));
 
           if (numDice !== results.length) {
             log.warn('Roll message had mismatched number of dice. reported # of dice: ' + sides + '; actual # of sides: ' + results.length + '; full message: ' + msg.content);
           } else {
-            globals.chatData.dieRolls.handleDieRolls(results, sides, msg.channel, msg.author.id);
+            globals.chatData.dieRolls.handleDieRolls(results, sides, msg.channel, userId);
           }
         }
     }
