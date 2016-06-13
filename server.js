@@ -127,6 +127,8 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
         try {
           globals.db.mongo.insertMany(globals.config.dieroll.mongo.collection, records);
 
+          // log.debug('*** Global lowest: ' + globals.chatData.dieRolls[numSides].lowest + ', Global highest: ' + globals.chatData.dieRolls[numSides].highest);
+
           globals.chatData.dieRolls[numSides].highest = globals.chatData.dieRolls[numSides].highest ? globals.chatData.dieRolls[numSides].highest : 0;
           globals.chatData.dieRolls[numSides].lowest = globals.chatData.dieRolls[numSides].lowest ? globals.chatData.dieRolls[numSides].lowest: Number.MAX_SAFE_INTEGER;
 
@@ -143,7 +145,7 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
             // HISTORICAL HIGH OR LOW ROLL
             var sorted = results.sort((a,b) => a - b);
             var lowest = sorted[0];
-            var highest = sorted[results.length - 1];
+            var highest = sorted[sorted.length - 1];
 
             log.debug('Lowest: ' + lowest + ', Highest: ' + highest);
             log.debug('Global lowest: ' + globals.chatData.dieRolls[numSides].lowest + ', Global highest: ' + globals.chatData.dieRolls[numSides].highest);
@@ -176,7 +178,7 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
         return mongo.dumpTable(collection).then(result => { this.allRolls = result; log.ignore('table: ' + utils.node.inspect(result)); })
           .then(() => log.debug('Finding historical lowest and highest rolls for d' + size))
           .then(() => globals.chatData.dieRolls.getLowRoll(this.allRolls, size)).then(lowest => { log.debug('lowest roll: ' + lowest.value); globals.chatData.dieRolls[size].lowest = lowest.value; })
-          .then(() => globals.chatData.dieRolls.getHighRoll(this.allRolls, size)).then(highest => { log.debug('highest roll: ' + highest.value);  globals.chatData.dieRolls[size].highest = highest; })      
+          .then(() => globals.chatData.dieRolls.getHighRoll(this.allRolls, size)).then(highest => { log.debug('highest roll: ' + highest.value);  globals.chatData.dieRolls[size].highest = highest.value; })      
           .catch(e => log.info('e: ' + e));
       }
     });
@@ -692,6 +694,7 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
     "rollstats": {
       usage: "[user]",
       description: "show statistics about recorded die rolls",
+      permissions: ['all'],
       process: function(bot, msg, suffix) {
         if (!globals.db.mongo.hasOpenConnection) {
           console.log('No open mongodb connection. Rollstats not enabled.');
@@ -1032,7 +1035,8 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
         });
           }
       else if(cmd) {
-        if(Permissions.checkPermission(msg.author,"basic")){
+        //TODO: proper declarative permissions
+        if(cmd.permissions && cmd.permissions.indexOf('all') !== -1 || Permissions.checkPermission(msg.author,"basic")) {
           try{
             cmd.process(bot,msg,suffix);
           } catch(e){
