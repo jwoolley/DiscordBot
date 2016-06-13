@@ -82,8 +82,11 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
       getLowRoll: function(table, size) {
         return table.filter(roll => roll.sides == size)
           .reduce((lowest, current) => { 
-            return Math.min(lowest, current.value); 
-          }, size);
+            if (lowest.value === undefined || current.value < lowest.value) {
+              lowest = current;
+            }
+            return lowest;
+          }, {});
       },
       getHighRoll: function(table, size) {
         return table.filter(roll => roll.sides == size)
@@ -162,14 +165,14 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
       }
     };
 
-    globals.config.dieroll.matches.forEach(entry => {
+    globals.config.dieroll.matches.forEach(entry => {      
       var size = entry.sides;
       globals.chatData.dieRolls[size] = { lowest: size, highest: 1 };
 
       if (mongo) {
         return mongo.dumpTable(collection).then(result => { this.allRolls = result; log.ignore('table: ' + utils.node.inspect(result)); })
           .then(() => log.debug('Finding historical lowest and highest rolls for d' + size))
-          .then(() => globals.chatData.dieRolls.getLowRoll(this.allRolls, size)).then(lowest => { log.debug('lowest roll: ' + lowest); globals.chatData.dieRolls[size].lowest = lowest; })
+          .then(() => globals.chatData.dieRolls.getLowRoll(this.allRolls, size)).then(lowest => { log.debug('lowest roll: ' + lowest.value); globals.chatData.dieRolls[size].lowest = lowest.value; })
           .then(() => globals.chatData.dieRolls.getHighRoll(this.allRolls, size)).then(highest => { log.debug('highest roll: ' + highest);  globals.chatData.dieRolls[size].highest = highest; })      
           .catch(e => log.info('e: ' + e));
       }
@@ -692,7 +695,28 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
           return;
         }
 
-        // function getRolls
+        log.debug('Getting all roll data from mongodb');
+
+        globals.db.mongo.dumpTable(globals.config.dieroll.mongo.collection)
+          .then(rolls => {
+            Object.keys(globals.chatData.dieRolls).forEach(size => {
+              if (isNaN(parseInt(size))) { return; }
+
+              log.debug('Finding roll data for d' + size);            
+
+              var lowRoll = globals.chatData.dieRolls.getLowRoll(rolls, size);
+              log.debug('lowest roll: ' + JSON.stringify(lowRoll));
+
+              var getNormalizedDateString = function(date) {
+                return date.toLocaleDateString('fullwide', { month: 'long', day: 'numeric', year: (date.getFullYear === (new Date().getFullYear()) ? undefined : 'numeric') } );
+              };
+
+              //handle user-not-found
+              bot.sendMessage(msg.channel, 'Lowest roll on record is **' + lowRoll.value + '**, by ' + msg.channel.server.members.get('id', lowRoll.user) + ' on ' + getNormalizedDateString(new Date(lowRoll.time)));
+              var highRoll = globals.chatData.dieRolls.getHighRoll(rolls, size);
+              log.debug('highest roll: ' + highRoll);    
+            });
+          });
 
         //for each die size, getRollStats(size) => stats object
         // --- if no user found for an userid in db, attribute  'an unrecognized user'
