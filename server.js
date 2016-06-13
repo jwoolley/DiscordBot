@@ -122,12 +122,10 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
           };
         });
 
-        log.ignore('inserting rolls: ' + JSON.stringify(records));
+        log.debug('inserting ' + records.length + ' rolls with ' + numSides + ' sides for user: ' + userId);
 
         try {
           globals.db.mongo.insertMany(globals.config.dieroll.mongo.collection, records);
-
-          // log.debug('*** Global lowest: ' + globals.chatData.dieRolls[numSides].lowest + ', Global highest: ' + globals.chatData.dieRolls[numSides].highest);
 
           globals.chatData.dieRolls[numSides].highest = globals.chatData.dieRolls[numSides].highest ? globals.chatData.dieRolls[numSides].highest : 0;
           globals.chatData.dieRolls[numSides].lowest = globals.chatData.dieRolls[numSides].lowest ? globals.chatData.dieRolls[numSides].lowest: Number.MAX_SAFE_INTEGER;
@@ -752,7 +750,8 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
             mostRolls: userStats.mostRolls,
             lowestAverage: userStats.lowestAverage,
             highestAverage: userStats.highestAverage,
-            averageAverage: userStats.averageAverage
+            averageAverage: userStats.averageAverage,
+            totalCount: table.length
           };
         };   
           
@@ -775,19 +774,21 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
 
               //TODO: handle user-not-found case
 
-              var statsMsg = '🎲 Stats for all **d' + size + '** die rolls recorded since ' + getNormalizedDateString(new Date(stats.oldest.time)) + ' 🎲';
+              var statsMsg = '🎲 Stats for all recorded **d' + size + '** die rolls 🎲';
               statsMsg += '\n\n • ';
-              statsMsg += 'Lowest roll on record is **' + stats.lowest.value + '**, by ' + getUser(stats.lowest.user) + ' on ' + getNormalizedDateString(new Date(stats.lowest.time));
+              statsMsg += 'Lowest roll on record is **' + stats.lowest.value + '** by ' + getUser(stats.lowest.user) + ' on ' + getNormalizedDateString(new Date(stats.lowest.time));
               statsMsg += '\n\n • ';
-              statsMsg += 'Highest roll on record is **' + stats.highest.value + '**, by ' + getUser(stats.highest.user) + ' on ' + getNormalizedDateString(new Date(stats.highest.time));
+              statsMsg += 'Highest roll on record is **' + stats.highest.value + '** by ' + getUser(stats.highest.user) + ' on ' + getNormalizedDateString(new Date(stats.highest.time));
               statsMsg += '\n\n • ';
-              statsMsg += 'Most rolls recorded is **' + stats.mostRolls.value + '**, for ' + getUser(stats.mostRolls.user);
+              statsMsg += 'Lowest average roll on record is **' + Math.round(stats.lowestAverage.value) + '** for ' + getUser(stats.lowestAverage.user);
               statsMsg += '\n\n • ';
-              statsMsg += 'Lowest average roll on record is **' + Math.round(stats.lowestAverage.value) + '**, for ' + getUser(stats.lowestAverage.user);
+              statsMsg += 'Highest average roll on record is **' + Math.round(stats.highestAverage.value) + '** for ' + getUser(stats.highestAverage.user);
               statsMsg += '\n\n • ';
-              statsMsg += 'Highest average roll on record is **' + Math.round(stats.highestAverage.value) + '**, for ' + getUser(stats.highestAverage.user);
+              statsMsg += 'Most average average roll on record is **' + Math.round(stats.averageAverage.value) + '** for ' + getUser(stats.averageAverage.user)              
               statsMsg += '\n\n • ';
-              statsMsg += 'Most average average roll on record is **' + Math.round(stats.averageAverage.value) + '**, for ' + getUser('id', stats.averageAverage.user);
+              statsMsg += 'Most rolls recorded is **' + stats.mostRolls.value + '** for ' + getUser(stats.mostRolls.user);
+              statsMsg += '\n\n • ';              
+              statsMsg += '**' + stats.totalCount + '** total rolls recorded since ' + getNormalizedDateString(new Date(stats.oldest.time));
 
               bot.sendMessage(msg.channel, statsMsg);                  
             });
@@ -1101,16 +1102,17 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
 
     if (msg.author.id != bot.user.id && globals.config.dieroll.users.approved.map(user => user.id).indexOf(msg.author.id) !== -1 
       && msg.content.toLowerCase().match(/<@\d+> rolled '\d+d\d+'/)) {
-        var match = msg.content.toLowerCase().match(/<@\d+> rolled '(\d+)d(\d+)' for ((\d+,?)+)/);
+        var match = msg.content.toLowerCase().match(/<@(\d+)> rolled '(\d+)d(\d+)' for ((\d+,?)+)/);
         if (match) {
-          var numDice = parseInt(match[1]);
-          var sides = parseInt(match[2]);
-          var results = match[3].split(',').map(result => parseInt(result));
+          var userId = parseInt(match[1])
+          var numDice = parseInt(match[2]);
+          var sides = parseInt(match[3]);
+          var results = match[4].split(',').map(result => parseInt(result));
 
           if (numDice !== results.length) {
             log.warn('Roll message had mismatched number of dice. reported # of dice: ' + sides + '; actual # of sides: ' + results.length + '; full message: ' + msg.content);
           } else {
-            globals.chatData.dieRolls.handleDieRolls(results, sides, msg.channel, msg.author.id);
+            globals.chatData.dieRolls.handleDieRolls(results, sides, msg.channel, userId);
           }
         }
     }
