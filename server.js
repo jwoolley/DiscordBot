@@ -100,6 +100,8 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
       handleDieRolls: function(results, numSides, channel, userId) {
         log.ignore('handleDieRolls | results: ' + results + '; numSides: ' + numSides + '; channel: ' + channel + '; userId: ' + userId);
 
+        if (globals.config.dieroll.matches.map(match => match.sides).indexOf(parseInt(numSides)) === -1) { return; }
+
         if (!globals.db.mongo.hasOpenConnection) {
           console.log('No open mongodb connection. Skipping die roll handling.');
           return;
@@ -130,38 +132,35 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
           globals.chatData.dieRolls[numSides].highest = globals.chatData.dieRolls[numSides].highest ? globals.chatData.dieRolls[numSides].highest : 0;
           globals.chatData.dieRolls[numSides].lowest = globals.chatData.dieRolls[numSides].lowest ? globals.chatData.dieRolls[numSides].lowest: Number.MAX_SAFE_INTEGER;
 
-          if (globals.config.dieroll.matches.map(match => match.sides).indexOf(parseInt(numSides)) !== -1) {
+          // JACKPOT ROLL (MIN/MAX POSSIBLE ROLL)
+          var targets = [1, numSides];
+          var matches = targets.filter(target => { 
+            return results.indexOf(target) !== -1;
+          });
+          matches.forEach(match => bot.sendMessage(channel, 
+            '🎲 🎲 🎲 Rolled a **' + match + '** on ' + results.length + ' d' + numSides + (numDice > 1 ? 's' : '') + '! 🎲 🎲 🎲'));
 
-            // JACKPOT ROLL (MIN/MAX POSSIBLE ROLL)
-            var targets = [1, numSides];
-            var matches = targets.filter(target => { 
-              return results.indexOf(target) !== -1;
-            });
-            matches.forEach(match => bot.sendMessage(channel, 
-              '🎲 🎲 🎲 Rolled a **' + match + '** on ' + results.length + ' d' + numSides + (numDice > 1 ? 's' : '') + '! 🎲 🎲 🎲'));
+          // HISTORICAL HIGH OR LOW ROLL
+          var sorted = results.sort((a,b) => a - b);
+          var lowest = sorted[0];
+          var highest = sorted[sorted.length - 1];
 
-            // HISTORICAL HIGH OR LOW ROLL
-            var sorted = results.sort((a,b) => a - b);
-            var lowest = sorted[0];
-            var highest = sorted[sorted.length - 1];
+          log.debug('Lowest: ' + lowest + ', Highest: ' + highest);
+          log.debug('Global lowest: ' + globals.chatData.dieRolls[numSides].lowest + ', Global highest: ' + globals.chatData.dieRolls[numSides].highest);
 
-            log.debug('Lowest: ' + lowest + ', Highest: ' + highest);
-            log.debug('Global lowest: ' + globals.chatData.dieRolls[numSides].lowest + ', Global highest: ' + globals.chatData.dieRolls[numSides].highest);
-
-            if (lowest < globals.chatData.dieRolls[numSides].lowest) {
-              var previousLowest = globals.chatData.dieRolls[numSides].lowest;
-              globals.chatData.dieRolls[numSides].lowest = lowest;
-              bot.sendMessage(channel, 
-              '🎲 Record broken for the lowest recorded d' + numSides + ' roll! Rolled a **' + lowest + '**. Previous low: ' + previousLowest + ' 🎲')
-            }
-
-            if (highest > globals.chatData.dieRolls[numSides].highest) {          
-              var previousHighest = globals.chatData.dieRolls[numSides].highest;
-              globals.chatData.dieRolls[numSides].highest = highest;
-              bot.sendMessage(channel, 
-              '🎲 Record broken for the highest recorded d' + numSides + ' roll! Rolled a **' + highest + '**. Previous high: ' + previousHighest + ' 🎲')
-            }              
+          if (lowest < globals.chatData.dieRolls[numSides].lowest) {
+            var previousLowest = globals.chatData.dieRolls[numSides].lowest;
+            globals.chatData.dieRolls[numSides].lowest = lowest;
+            bot.sendMessage(channel, 
+            '🎲 Record broken for the lowest recorded d' + numSides + ' roll! Rolled a **' + lowest + '**. Previous low: ' + previousLowest + ' 🎲')
           }
+
+          if (highest > globals.chatData.dieRolls[numSides].highest) {          
+            var previousHighest = globals.chatData.dieRolls[numSides].highest;
+            globals.chatData.dieRolls[numSides].highest = highest;
+            bot.sendMessage(channel, 
+            '🎲 Record broken for the highest recorded d' + numSides + ' roll! Rolled a **' + highest + '**. Previous high: ' + previousHighest + ' 🎲')
+          }              
         } catch (e) {
           log.error('Error saving dieroll data: ' + e);
         }
@@ -761,18 +760,20 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
         }
 
         globals.db.mongo.dumpTable(globals.config.dieroll.mongo.collection)  
-          .then(rolls => {
+          .then(allRolls => {
             log.debug('globals.chatData.dieRolls: ' + JSON.stringify(globals.chatData.dieRolls, null, '\t'));
 
             Object.keys(globals.chatData.dieRolls).forEach(size => {
               if (isNaN(parseInt(size))) { return; } // TODO: put dieRoll records in a child property
 
-              log.debug('Calculating roll data for d' + size);            
+              log.debug('Calculating roll stats for d' + size);            
 
-              var rolls = rolls.filter(roll => roll.sides == size);
+              var rolls = allRolls.filter(roll => roll.sides == size);
               if (rolls.length === 0) { return; } 
 
               var stats = aggregateRollStats(rolls, size);
+
+              log.debug('Roll stats: ' + JSON.stringify(stats, null, '\t'));
 
               var statsMsg = '🎲 Stats for all recorded **d' + size + '** die rolls 🎲';
               statsMsg += '\n\n • ';
