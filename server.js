@@ -762,17 +762,17 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
 
         globals.db.mongo.dumpTable(globals.config.dieroll.mongo.collection)  
           .then(rolls => {
+            log.debug('globals.chatData.dieRolls: ' + JSON.stringify(globals.chatData.dieRolls, null, '\t'));
+
             Object.keys(globals.chatData.dieRolls).forEach(size => {
               if (isNaN(parseInt(size))) { return; } // TODO: put dieRoll records in a child property
 
               log.debug('Calculating roll data for d' + size);            
 
-              // var userStats = aggregateRollStats(rolls, size);
-              // var lowRoll = globals.chatData.dieRolls.getLowRoll(rolls, size);
-              // var highRoll = globals.chatData.dieRolls.getHighRoll(rolls, size);
-              var stats = aggregateRollStats(rolls.filter(roll => roll.sides == size), size);
+              var rolls = rolls.filter(roll => roll.sides == size);
+              if (rolls.length === 0) { return; } 
 
-              //TODO: handle user-not-found case
+              var stats = aggregateRollStats(rolls, size);
 
               var statsMsg = '🎲 Stats for all recorded **d' + size + '** die rolls 🎲';
               statsMsg += '\n\n • ';
