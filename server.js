@@ -90,9 +90,12 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
       },
       getHighRoll: function(table, size) {
         return table.filter(roll => roll.sides == size)
-          .reduce((highest, current) => {
-            return Math.max(highest, current.value); 
-          }, 0);
+          .reduce((highest, current) => { 
+            if (highest.value === undefined || current.value > highest.value) {
+              highest = current;
+            }
+            return highest;
+          }, {});
       },
       handleDieRolls: function(results, numSides, channel, userId) {
         log.ignore('handleDieRolls | results: ' + results + '; numSides: ' + numSides + '; channel: ' + channel + '; userId: ' + userId);
@@ -173,7 +176,7 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
         return mongo.dumpTable(collection).then(result => { this.allRolls = result; log.ignore('table: ' + utils.node.inspect(result)); })
           .then(() => log.debug('Finding historical lowest and highest rolls for d' + size))
           .then(() => globals.chatData.dieRolls.getLowRoll(this.allRolls, size)).then(lowest => { log.debug('lowest roll: ' + lowest.value); globals.chatData.dieRolls[size].lowest = lowest.value; })
-          .then(() => globals.chatData.dieRolls.getHighRoll(this.allRolls, size)).then(highest => { log.debug('highest roll: ' + highest);  globals.chatData.dieRolls[size].highest = highest; })      
+          .then(() => globals.chatData.dieRolls.getHighRoll(this.allRolls, size)).then(highest => { log.debug('highest roll: ' + highest.value);  globals.chatData.dieRolls[size].highest = highest; })      
           .catch(e => log.info('e: ' + e));
       }
     });
@@ -695,26 +698,95 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
           return;
         }
 
-        log.debug('Getting all roll data from mongodb');
+        var getNormalizedDateString = function(date) {
+          return date.toLocaleDateString('fullwide', { month: 'long', day: 'numeric', year: (date.getFullYear() === (new Date().getFullYear()) ? undefined : 'numeric') } );
+        };
 
-        globals.db.mongo.dumpTable(globals.config.dieroll.mongo.collection)
+        // test with no roll data (and w/ no roll data for specificied size; pass in a bogus size)
+        var aggregateRollStats = function(table, size) {                
+          var aggregate = table.reduce((aggregate, current) => {
+            if (aggregate.lowest === undefined || current.value < aggregate.lowest.value) {
+              aggregate.lowest = current;
+            }
+            if (aggregate.highest === undefined || current.value > aggregate.highest.value) {
+              aggregate.highest = current;
+            }
+
+            if (aggregate.oldest === undefined || current.time < aggregate.oldest.time) {
+              aggregate.oldest = current;
+            }
+
+            if (aggregate.userRolls[current.user] === undefined) {
+              aggregate.userRolls[current.user] = [];
+            }
+
+            aggregate.userRolls[current.user].push(current);
+            return aggregate;
+          }, { oldest: undefined, lowest: undefined, highest: undefined, userRolls: {} });
+
+          var userStats = Object.keys(aggregate.userRolls).reduce((userAggregate, user) => {
+            var rolls = aggregate.userRolls[user];
+            var averageRoll = rolls.reduce((total, roll) => total + roll.value, 0) / rolls.length;
+
+            if (userAggregate.mostRolls === undefined || rolls.length > userAggregate.mostRolls) {
+              userAggregate.mostRolls = { user: user, value: rolls.length };
+            }
+            if (userAggregate.lowestAverage === undefined || averageRoll < userAggregate.lowestAverage) {
+              userAggregate.lowestAverage = { user: user, value: averageRoll };
+            }
+            if (userAggregate.highestAverage === undefined || averageRoll > userAggregate.highestAverage) {
+              userAggregate.highestAverage = { user: user, value: averageRoll };
+            }
+            if (userAggregate.averageAverage === undefined || Math.abs(size/2 - averageRoll) < Math.abs(size/2 - userAggregate.averageAverage)) {
+              userAggregate.averageAverage = { user: user, value: averageRoll };
+            }                  
+            return userAggregate;
+          }, { mostRolls: undefined, lowestAverage: undefined, highestAverage: undefined, averageAverage: undefined });
+          return {
+            oldest: aggregate.oldest,
+            lowest: aggregate.lowest,
+            highest: aggregate.highest,
+            mostRolls: userStats.mostRolls,
+            lowestAverage: userStats.lowestAverage,
+            highestAverage: userStats.highestAverage,
+            averageAverage: userStats.averageAverage
+          };
+        };   
+          
+        var getUser = function(userId) {
+          var user = msg.channel.server.members.get('id', userId);
+          return user ? user : '**unknown user**';
+        }
+
+        globals.db.mongo.dumpTable(globals.config.dieroll.mongo.collection)  
           .then(rolls => {
             Object.keys(globals.chatData.dieRolls).forEach(size => {
-              if (isNaN(parseInt(size))) { return; }
+              if (isNaN(parseInt(size))) { return; } // TODO: put dieRoll records in a child property
 
-              log.debug('Finding roll data for d' + size);            
+              log.debug('Calculating roll data for d' + size);            
 
-              var lowRoll = globals.chatData.dieRolls.getLowRoll(rolls, size);
-              log.debug('lowest roll: ' + JSON.stringify(lowRoll));
+              // var userStats = aggregateRollStats(rolls, size);
+              // var lowRoll = globals.chatData.dieRolls.getLowRoll(rolls, size);
+              // var highRoll = globals.chatData.dieRolls.getHighRoll(rolls, size);
+              var stats = aggregateRollStats(rolls.filter(roll => roll.sides == size), size);
 
-              var getNormalizedDateString = function(date) {
-                return date.toLocaleDateString('fullwide', { month: 'long', day: 'numeric', year: (date.getFullYear === (new Date().getFullYear()) ? undefined : 'numeric') } );
-              };
+              //TODO: handle user-not-found case
 
-              //handle user-not-found
-              bot.sendMessage(msg.channel, 'Lowest roll on record is **' + lowRoll.value + '**, by ' + msg.channel.server.members.get('id', lowRoll.user) + ' on ' + getNormalizedDateString(new Date(lowRoll.time)));
-              var highRoll = globals.chatData.dieRolls.getHighRoll(rolls, size);
-              log.debug('highest roll: ' + highRoll);    
+              var statsMsg = '🎲 Stats for all **d' + size + '** die rolls recorded since ' + getNormalizedDateString(new Date(stats.oldest.time)) + ' 🎲';
+              statsMsg += '\n\n • ';
+              statsMsg += 'Lowest roll on record is **' + stats.lowest.value + '**, by ' + getUser(stats.lowest.user) + ' on ' + getNormalizedDateString(new Date(stats.lowest.time));
+              statsMsg += '\n\n • ';
+              statsMsg += 'Highest roll on record is **' + stats.highest.value + '**, by ' + getUser(stats.highest.user) + ' on ' + getNormalizedDateString(new Date(stats.highest.time));
+              statsMsg += '\n\n • ';
+              statsMsg += 'Most rolls recorded is **' + stats.mostRolls.value + '**, for ' + getUser(stats.mostRolls.user);
+              statsMsg += '\n\n • ';
+              statsMsg += 'Lowest average roll on record is **' + Math.round(stats.lowestAverage.value) + '**, for ' + getUser(stats.lowestAverage.user);
+              statsMsg += '\n\n • ';
+              statsMsg += 'Highest average roll on record is **' + Math.round(stats.highestAverage.value) + '**, for ' + getUser(stats.highestAverage.user);
+              statsMsg += '\n\n • ';
+              statsMsg += 'Most average average roll on record is **' + Math.round(stats.averageAverage.value) + '**, for ' + getUser('id', stats.averageAverage.user);
+
+              bot.sendMessage(msg.channel, statsMsg);                  
             });
           });
 
