@@ -16,12 +16,12 @@ http.createServer(function(request, response) {
 }).listen(process.env.PORT || 8888);
 
 try {
-	var Discord = require("discord.js");
+  var Discord = require("discord.js");
 } catch (e){
-	console.log(e.stack);
-	console.log(process.version);
-	console.log("Please run npm install and ensure it passes with no errors!");
-	process.exit();
+  console.log(e.stack);
+  console.log(process.version);
+  console.log("Please run npm install and ensure it passes with no errors!");
+  process.exit();
 }
 
 var globals = {
