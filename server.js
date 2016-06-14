@@ -728,7 +728,7 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
             var rolls = aggregate.userRolls[user];
             var averageRoll = rolls.reduce((total, roll) => total + roll.value, 0) / rolls.length;
 
-            if (userAggregate.mostRolls === undefined || rolls.length > userAggregate.mostRolls) {
+            if (userAggregate.mostRolls === undefined || rolls.length > userAggregate.mostRolls.value) {
               userAggregate.mostRolls = { user: user, value: rolls.length };
             }
             if (userAggregate.lowestAverage === undefined || averageRoll < userAggregate.lowestAverage.value) {
