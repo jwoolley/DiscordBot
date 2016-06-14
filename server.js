@@ -16,12 +16,12 @@ http.createServer(function(request, response) {
 }).listen(process.env.PORT || 8888);
 
 try {
-	var Discord = require("discord.js");
+  var Discord = require("discord.js");
 } catch (e){
-	console.log(e.stack);
-	console.log(process.version);
-	console.log("Please run npm install and ensure it passes with no errors!");
-	process.exit();
+  console.log(e.stack);
+  console.log(process.version);
+  console.log("Please run npm install and ensure it passes with no errors!");
+  process.exit();
 }
 
 var globals = {
@@ -124,7 +124,7 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
           };
         });
 
-        log.debug('inserting ' + records.length + ' rolls with ' + numSides + ' sides for user: ' + userId);
+        log.debug('Inserting ' + records.length + ' rolls with ' + numSides + ' sides for user: ' + userId.toString());
 
         try {
           globals.db.mongo.insertMany(globals.config.dieroll.mongo.collection, records);
@@ -1107,7 +1107,7 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
       && msg.content.toLowerCase().match(/<@\d+> rolled '\d+d\d+'/)) {
         var match = msg.content.toLowerCase().match(/<@(\d+)> rolled '(\d+)d(\d+)' for ((\d+,?)+)/);
         if (match) {
-          var userId = parseInt(match[1])
+          var userId = match[1];
           var numDice = parseInt(match[2]);
           var sides = parseInt(match[3]);
           var results = match[4].split(',').map(result => parseInt(result));
