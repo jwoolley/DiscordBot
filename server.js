@@ -672,7 +672,7 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
         }
       }
     },
-    "testUserId": {
+    "testuserid": {
       usage: "<userid>",
       description: "debugging ability to get user object from userid",
       process: function(bot, msg, suffix) {
@@ -685,6 +685,7 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
         try {
          var user = msg.channel.server.members.get("id", userId);
         } catch (e) { console.log(e)};
+        log.debug('User: ' + user.username);
         bot.sendMessage(msg.channel, 'Oh, ' + user + '. That guy\'s a jerk.');
       }
     },
@@ -758,7 +759,7 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
           log.debug('finding user ' + userId + ' for server ' + msg.channel.server);
           log.ignore(' in members ' + (msg.channel.server ? utils.node.inspect(msg.channel.server.members) : undefined));
           var user = msg.channel.server ? msg.channel.server.members.get('id', userId) : undefined;
-          return user ? user : '**unknown user**';
+          return user ? user : { username: '**unknown user**'};
         }
 
         globals.db.mongo.dumpTable(globals.config.dieroll.mongo.collection)  
@@ -779,17 +780,17 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
 
               var statsMsg = '🎲 Stats for all recorded **d' + size + '** die rolls 🎲';
               statsMsg += '\n\n • ';
-              statsMsg += 'Lowest roll on record is **' + stats.lowest.value + '** by ' + getUser(stats.lowest.user) + ' on ' + getNormalizedDateString(new Date(stats.lowest.time));
+              statsMsg += 'Lowest roll on record is **' + stats.lowest.value + '** by ' + getUser(stats.lowest.user).username + ' on ' + getNormalizedDateString(new Date(stats.lowest.time));
               statsMsg += '\n\n • ';
-              statsMsg += 'Highest roll on record is **' + stats.highest.value + '** by ' + getUser(stats.highest.user) + ' on ' + getNormalizedDateString(new Date(stats.highest.time));
+              statsMsg += 'Highest roll on record is **' + stats.highest.value + '** by ' + getUser(stats.highest.user).username + ' on ' + getNormalizedDateString(new Date(stats.highest.time));
               statsMsg += '\n\n • ';
-              statsMsg += 'Lowest average roll on record is **' + Math.round(stats.lowestAverage.value) + '** for ' + getUser(stats.lowestAverage.user);
+              statsMsg += 'Lowest average roll on record is **' + Math.round(stats.lowestAverage.value) + '** for ' + getUser(stats.lowestAverage.user).username;
               statsMsg += '\n\n • ';
-              statsMsg += 'Highest average roll on record is **' + Math.round(stats.highestAverage.value) + '** for ' + getUser(stats.highestAverage.user);
+              statsMsg += 'Highest average roll on record is **' + Math.round(stats.highestAverage.value) + '** for ' + getUser(stats.highestAverage.user).username;
               statsMsg += '\n\n • ';
-              statsMsg += 'Most average average roll on record is **' + Math.round(stats.averageAverage.value) + '** for ' + getUser(stats.averageAverage.user)              
+              statsMsg += 'Most average average roll on record is **' + Math.round(stats.averageAverage.value) + '** for ' + getUser(stats.averageAverage.user).username             
               statsMsg += '\n\n • ';
-              statsMsg += 'Most rolls recorded is **' + stats.mostRolls.value + '** for ' + getUser(stats.mostRolls.user);
+              statsMsg += 'Most rolls recorded is **' + stats.mostRolls.value + '** for ' + getUser(stats.mostRolls.user).username;
               statsMsg += '\n\n • ';              
               statsMsg += '**' + stats.totalCount + '** total rolls recorded since ' + getNormalizedDateString(new Date(stats.oldest.time));
 
@@ -1104,8 +1105,8 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
     } 
 
     if (msg.author.id != bot.user.id && globals.config.dieroll.users.approved.map(user => user.id).indexOf(msg.author.id) !== -1 
-      && msg.content.toLowerCase().match(/<@\d+> rolled '\d+d\d+'/)) {
-        var match = msg.content.toLowerCase().match(/<@(\d+)> rolled '(\d+)d(\d+)' for ((\d+,?)+)/);
+      && msg.content.toLowerCase().match(/<@\d+> rolled '\d+\s*d\s*\d+'/)) {
+        var match = msg.content.toLowerCase().match(/<@(\d+)> rolled '(\d+)\s*d\s*(\d+)' for ((\d+,?)+)/);
         if (match) {
           var userId = match[1];
           var numDice = parseInt(match[2]);
