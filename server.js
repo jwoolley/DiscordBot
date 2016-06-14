@@ -100,7 +100,7 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
       handleDieRolls: function(results, numSides, channel, userId) {
         log.ignore('handleDieRolls | results: ' + results + '; numSides: ' + numSides + '; channel: ' + channel + '; userId: ' + userId);
 
-        if (globals.config.dieroll.matches.map(match => match.sides).indexOf(parseInt(numSides)) === -1) { return; }
+        if (globals.config.dieroll.matches.map(match => match.sides).indexOf(parseInt(numSides)) === -1 || channel === undefined || userId === undefined) { return; }
 
         if (!globals.db.mongo.hasOpenConnection) {
           console.log('No open mongodb connection. Skipping die roll handling.');
@@ -119,7 +119,7 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
           return {
             value: result,
             sides: numSides,
-            user: userId,
+            user: userId.toString(),
             time: timestamp
           };
         });
@@ -756,14 +756,14 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
           
         var getUser = function(userId) {
           log.debug('finding user ' + userId + ' for server ' + msg.channel.server);
-          log.ignore(' in members ' + utils.node.inspect(msg.channel.server.members))
+          log.ignore(' in members ' + (msg.channel.server ? utils.node.inspect(msg.channel.server.members) : undefined));
           var user = msg.channel.server ? msg.channel.server.members.get('id', userId) : undefined;
           return user ? user : '**unknown user**';
         }
 
         globals.db.mongo.dumpTable(globals.config.dieroll.mongo.collection)  
           .then(allRolls => {
-            log.debug('globals.chatData.dieRolls: ' + JSON.stringify(globals.chatData.dieRolls, null, '\t'));
+            log.ignore('globals.chatData.dieRolls: ' + JSON.stringify(globals.chatData.dieRolls, null, '\t'));
 
             Object.keys(globals.chatData.dieRolls).forEach(size => {
               if (isNaN(parseInt(size))) { return; } // TODO: put dieRoll records in a child property
@@ -775,7 +775,7 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
 
               var stats = aggregateRollStats(rolls, size);
 
-              log.debug('Roll stats: ' + JSON.stringify(stats, null, '\t'));
+              log.ignore('Roll stats: ' + JSON.stringify(stats, null, '\t'));
 
               var statsMsg = '🎲 Stats for all recorded **d' + size + '** die rolls 🎲';
               statsMsg += '\n\n • ';
