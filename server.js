@@ -731,13 +731,13 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
             if (userAggregate.mostRolls === undefined || rolls.length > userAggregate.mostRolls) {
               userAggregate.mostRolls = { user: user, value: rolls.length };
             }
-            if (userAggregate.lowestAverage === undefined || averageRoll < userAggregate.lowestAverage) {
+            if (userAggregate.lowestAverage === undefined || averageRoll < userAggregate.lowestAverage.value) {
               userAggregate.lowestAverage = { user: user, value: averageRoll };
             }
-            if (userAggregate.highestAverage === undefined || averageRoll > userAggregate.highestAverage) {
+            if (userAggregate.highestAverage === undefined || averageRoll > userAggregate.highestAverage.value) {
               userAggregate.highestAverage = { user: user, value: averageRoll };
             }
-            if (userAggregate.averageAverage === undefined || Math.abs(size/2 - averageRoll) < Math.abs(size/2 - userAggregate.averageAverage)) {
+            if (userAggregate.averageAverage === undefined || Math.abs(size/2 - averageRoll) < Math.abs(size/2 - userAggregate.averageAverage.value)) {
               userAggregate.averageAverage = { user: user, value: averageRoll };
             }                  
             return userAggregate;
@@ -755,7 +755,9 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
         };   
           
         var getUser = function(userId) {
-          var user = msg.channel.server.members.get('id', userId);
+          log.debug('finding user ' + userId + ' for server ' + msg.channel.server);
+          log.ignore(' in members ' + utils.node.inspect(msg.channel.server.members))
+          var user = msg.channel.server ? msg.channel.server.members.get('id', userId) : undefined;
           return user ? user : '**unknown user**';
         }
 
