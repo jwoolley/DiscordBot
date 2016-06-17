@@ -690,7 +690,7 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
       }
     },
     "rollstats": {
-      usage: "[user]",
+      usage: "me | all",
       description: "show statistics about recorded die rolls",
       permissions: ['all'],
       process: function(bot, msg, suffix) {
@@ -751,9 +751,39 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
             lowestAverage: userStats.lowestAverage,
             highestAverage: userStats.highestAverage,
             averageAverage: userStats.averageAverage,
+            userStats: userStats,
             totalCount: table.length
           };
         };   
+
+        var aggregateUserStats = function(table, userId, size) {
+          log.debug('Looking for d' + size + ' rolls for userId ' + userId + '...');
+          var stats = table
+            .filter(roll => roll.user === userId)
+            .reduce((stats, current) => {
+              stats.count++;
+              stats.total += current.value;
+              if (stats.lowest === undefined || current.value < stats.lowest.value) {
+                stats.lowest = current;
+              }           
+              if (stats.highest === undefined || current.value > stats.highest.value) {
+                stats.highest = current;
+              }
+              if (stats.oldest === undefined || current.time < stats.oldest.time) {
+                stats.oldest = current;
+              }
+              return stats;                         
+            }, { oldest: undefined, lowest: undefined, highest: undefined, count: 0 , total: 0 });
+          var stats = {
+            lowest: stats.lowest,
+            highest: stats.highest,
+            oldest: stats.oldest,
+            count: stats.count,
+            average: stats.count > 0 ? (stats.total / stats.count) : undefined
+          };
+          log.debug('USER STATS: ' + JSON.stringify(stats));
+          return stats;
+        };
           
         var getUser = function(userId) {
           log.debug('finding user ' + userId + ' for server ' + msg.channel.server);
@@ -774,26 +804,49 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
               var rolls = allRolls.filter(roll => roll.sides == size);
               if (rolls.length === 0) { return; } 
 
-              var stats = aggregateRollStats(rolls, size);
+              var statsMsg = undefined; 
 
-              log.ignore('Roll stats: ' + JSON.stringify(stats, null, '\t'));
+              if (suffix === 'me') {
+                var userId = msg.author.id;
+                var stats = aggregateUserStats(rolls, userId, size);
 
-              var statsMsg = '🎲 Stats for all recorded **d' + size + '** die rolls 🎲';
-              statsMsg += '\n\n • ';
-              statsMsg += 'Lowest roll on record is **' + stats.lowest.value + '** by ' + getUser(stats.lowest.user).username + ' on ' + getNormalizedDateString(new Date(stats.lowest.time));
-              statsMsg += '\n\n • ';
-              statsMsg += 'Highest roll on record is **' + stats.highest.value + '** by ' + getUser(stats.highest.user).username + ' on ' + getNormalizedDateString(new Date(stats.highest.time));
-              statsMsg += '\n\n • ';
-              statsMsg += 'Lowest average roll on record is **' + Math.round(stats.lowestAverage.value) + '** for ' + getUser(stats.lowestAverage.user).username;
-              statsMsg += '\n\n • ';
-              statsMsg += 'Highest average roll on record is **' + Math.round(stats.highestAverage.value) + '** for ' + getUser(stats.highestAverage.user).username;
-              statsMsg += '\n\n • ';
-              statsMsg += 'Most average average roll on record is **' + Math.round(stats.averageAverage.value) + '** for ' + getUser(stats.averageAverage.user).username             
-              statsMsg += '\n\n • ';
-              statsMsg += 'Most rolls recorded is **' + stats.mostRolls.value + '** for ' + getUser(stats.mostRolls.user).username;
-              statsMsg += '\n\n • ';              
-              statsMsg += '**' + stats.totalCount + '** total rolls recorded since ' + getNormalizedDateString(new Date(stats.oldest.time));
+                log.ignore('Roll stats: ' + JSON.stringify(stats, null, '\t'));
 
+                if (stats.count === 0) {
+                  statsMsg = '🎲 No d' + size +' rolls recorded for ' + getUser(userId) + ' 🎲';
+                } else {
+                  statsMsg = '🎲 Stats for all **d' + size + '** die rolls recorded for ' + getUser(userId) + ' 🎲';
+                  statsMsg += '\n\n • ';
+                  statsMsg += 'You have made **' + stats.count + '**  rolls since ' + getNormalizedDateString(new Date(stats.oldest.time));                  
+                  statsMsg += '\n\n • ';
+                  statsMsg += 'Your lowest roll on record is **' + stats.lowest.value + '**  on ' + getNormalizedDateString(new Date(stats.lowest.time));
+                  statsMsg += '\n\n • ';
+                  statsMsg += 'Your highest roll on record is **' + stats.highest.value + '** on ' + getNormalizedDateString(new Date(stats.highest.time));
+                  statsMsg += '\n\n • ';
+                  statsMsg += 'Your average roll is **' + Math.round(stats.average) + '**';
+                }
+              } else {
+                var stats = aggregateRollStats(rolls, size);
+
+                log.ignore('Roll stats: ' + JSON.stringify(stats, null, '\t'));
+
+                statsMsg = '🎲 Stats for all recorded **d' + size + '** die rolls 🎲';
+                statsMsg += '\n\n • ';
+                statsMsg += 'Lowest roll on record is **' + stats.lowest.value + '** by ' + getUser(stats.lowest.user).username + ' on ' + getNormalizedDateString(new Date(stats.lowest.time));
+                statsMsg += '\n\n • ';
+                statsMsg += 'Highest roll on record is **' + stats.highest.value + '** by ' + getUser(stats.highest.user).username + ' on ' + getNormalizedDateString(new Date(stats.highest.time));
+                statsMsg += '\n\n • ';
+                statsMsg += 'Lowest average roll is **' + Math.round(stats.lowestAverage.value) + '** for ' + getUser(stats.lowestAverage.user).username;
+                statsMsg += '\n\n • ';
+                statsMsg += 'Highest average roll is **' + Math.round(stats.highestAverage.value) + '** for ' + getUser(stats.highestAverage.user).username;
+                statsMsg += '\n\n • ';
+                statsMsg += 'Most average average roll is **' + Math.round(stats.averageAverage.value) + '** for ' + getUser(stats.averageAverage.user).username             
+                statsMsg += '\n\n • ';
+                statsMsg += 'Most rolls recorded is **' + stats.mostRolls.value + '** for ' + getUser(stats.mostRolls.user).username;
+                statsMsg += '\n\n • ';              
+                statsMsg += '**' + stats.totalCount + '** total rolls recorded since ' + getNormalizedDateString(new Date(stats.oldest.time));
+              }
+            
               bot.sendMessage(msg.channel, statsMsg);                  
             });
           });
