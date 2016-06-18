@@ -9,8 +9,11 @@
   },
   "matches":  [
     { 
-      "sides": 1000,
-      "values": [1, 1000] 
+      "sides": 1000
+      "images": {
+        "min": "img_url_for_min_roll",
+        "max": "img_url_for_max_roll"
+      }
     }
   ],
   "mongo": {

@@ -1,0 +1,18 @@
+{
+  "yourforum": {
+    "authentication" : {
+      "username": "your_username",
+      "password": "your_password"
+    },
+    "threads": {
+      "oldthread": {
+        "threadId": "496",
+        "forumId": "3"
+      },
+      "newthread": {
+        "threadId": "7338",
+        "forumId": "15"
+      }
+    }
+  }
+}
