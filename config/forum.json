@@ -1,0 +1,18 @@
+{
+  "goodgamery": {
+    "authentication" : {
+      "username": "bagglebot",
+      "password": "gizmo95062-BA!"
+    },
+    "threads": {
+      "botTrap": {
+        "threadId": "7338",
+        "forumId": "15"
+      },
+      "dieRolls": {
+        "threadId": "7198",
+        "forumId": "21"
+      }
+    }
+  }
+}
