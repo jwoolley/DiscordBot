@@ -8,6 +8,8 @@ var htmlToText = require('html-to-text');
 var MongoDb = require('./lib/mongo.js');
 var utils = require('./lib/utils');
 
+var Request = require('request').defaults({jar: true});
+  
 var http = require('http');
 http.createServer(function(request, response) {
   response.writeHead(200, {"Content-Type": "text/plain"});
@@ -38,7 +40,7 @@ var log = {
   ignore: function(msg) {}
 };
 
-var configs = ['server', 'auth', 'permissions', 'dieroll', 'config'];
+var configs = ['server', 'auth', 'permissions', 'dieroll', 'config', 'forum'];
 Promise.all(configs.map(config => loadConfig(config))).then(() => { 
   // log.debug(JSON.stringify(globals.config, null, '\t')) 
   // Get authentication data
@@ -97,7 +99,7 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
             return highest;
           }, {});
       },
-      handleDieRolls: function(results, numSides, channel, userId) {
+      handleDieRolls: function(results, numSides, channel, userId, originalMessageAuthor, originalMessageBody) {
         log.ignore('handleDieRolls | results: ' + results + '; numSides: ' + numSides + '; channel: ' + channel + '; userId: ' + userId);
 
         if (globals.config.dieroll.matches.map(match => match.sides).indexOf(parseInt(numSides)) === -1 || channel === undefined || userId === undefined) { return; }
@@ -133,12 +135,46 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
           globals.chatData.dieRolls[numSides].lowest = globals.chatData.dieRolls[numSides].lowest ? globals.chatData.dieRolls[numSides].lowest: Number.MAX_SAFE_INTEGER;
 
           // JACKPOT ROLL (MIN/MAX POSSIBLE ROLL)
-          var targets = [1, numSides];
+          var targets = [1, parseInt(numSides)];
+
+          log.debug('Looking for jackpot roll ' + targets + ' in ' + results);
+
+          log.ignore('typeof targets: ' + typeof targets[1] + '; typeof results: ' + typeof results[1]);
+
           var matches = targets.filter(target => { 
             return results.indexOf(target) !== -1;
           });
-          matches.forEach(match => bot.sendMessage(channel, 
-            '🎲 🎲 🎲 Rolled a **' + match + '** on ' + results.length + ' d' + numSides + (numDice > 1 ? 's' : '') + '! 🎲 🎲 🎲'));
+          log.debug('CONFIG: ' + JSON.stringify(globals.config.dieroll.matches));
+          var matchConfig = globals.config.dieroll.matches.find(match => match.sides == numSides);
+          log.debug('THIS CONFIG: ' + matchConfig);
+
+          matches.forEach(match => { 
+            log.debug('FOUND A MATCH! ' + match);
+            var user = getUser(userId, channel);
+            bot.sendMessage(channel, '🎲 🎲 🎲 Rolled a **' + match + '** on ' + results.length + ' d' + numSides + (numDice > 1 ? 's' : '') + '! 🎲 🎲 🎲');
+            var originalMessage = originalMessageBody.substr(0);
+            var rollRegex = new RegExp('(^|\\W)(' + lowest + ')($|\\W)');
+            originalMessage = originalMessage.replace(rollRegex, "$1[b]$2[/b]$3");
+            originalMessage = originalMessage.replace(/:game_die:/g, '🎲');
+
+            originalMessage = originalMessage.replace(/<@(\d+)>/, function(match, p1) { return getUser(p1, channel).username; });
+            var forumPostMessage = ':alarm:  :alarm:  :alarm:  :alarm:  :alarm:  :alarm:';
+            forumPostMessage += '\n\na winner has been decided ...';
+            forumPostMessage += '\n\n[b]' + user.username + '[/b] has thrown the winning roll!';
+            forumPostMessage += '\n\nThe winner of the great d' + numSides + ' battle is...';        
+            forumPostMessage +=  '\n\n[spoiler]';
+            forumPostMessage += '[quote="' + originalMessageAuthor + '"]';
+            forumPostMessage += originalMessage;
+            forumPostMessage += '[/quote]';    
+            forumPostMessage += '\n:pmoparty: :pmoparty: :pmoparty: :pmoparty: :pmoparty:\n:pmoparty: :pmoparty: :pmoparty: :pmoparty: :pmoparty:\n:pmoparty: :pmoparty: :pmoparty: :pmoparty: :pmoparty:';
+            forumPostMessage += '\n[img]' + (match === 1 ? matchConfig.images.min : matchConfig.images.max) + '[/img]';
+            forumPostMessage += '\n:pmoparty: :pmoparty: :pmoparty: :pmoparty: :pmoparty:\n:pmoparty: :pmoparty: :pmoparty: :pmoparty: :pmoparty:\n:pmoparty: :pmoparty: :pmoparty: :pmoparty: :pmoparty:';
+            forumPostMessage += '\n\n[youtube]https://www.youtube.com/watch?v=3GwjfUFyY6M[/youtube]';
+            forumPostMessage += '\n\n' + match + ' is the best number! Well, played everybody![/spoiler]';
+            forumPostMessage += '\n\n:alarm:  :alarm:  :alarm:  :alarm:  :alarm:  :alarm:';
+
+            console.log('Would post jackpot message: ' + forumPostMessage);
+          });
 
           // HISTORICAL HIGH OR LOW ROLL
           var sorted = results.sort((a,b) => a - b);
@@ -152,14 +188,44 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
             var previousLowest = globals.chatData.dieRolls[numSides].lowest;
             globals.chatData.dieRolls[numSides].lowest = lowest;
             bot.sendMessage(channel, 
-            '🎲 Record broken for the lowest recorded d' + numSides + ' roll! Rolled a **' + lowest + '**. Previous low: ' + previousLowest + ' 🎲')
-          }
+            '🎲 Record broken for the lowest recorded d' + numSides + ' roll! Rolled a **' + lowest + '**. Previous low: ' + previousLowest + ' 🎲');
 
+            var rollRegex = new RegExp('(^|\\W)(' + lowest + ')($|\\W)');
+            var originalMessage = originalMessageBody.substr(0);            
+            originalMessage = originalMessage.replace(rollRegex, "$1[b]$2[/b]$3");
+            originalMessage = originalMessage.replace(/:game_die:/g, '🎲');
+
+            originalMessage = originalMessage.replace(/<@(\d+)>/, function(match, p1) { return getUser(p1, channel).username; });
+            var forumPostMessage = 'The record for the lowest die roll has been broken!' 
+            forumPostMessage += '\n\n[quote="' + originalMessageAuthor + '"]';
+            forumPostMessage += originalMessage;
+            forumPostMessage += '[/quote]';
+            forumPostMessage += '\nNew lowest roll: [b]' + lowest + '[/b]';
+
+            console.log('Would post low roll message: ' + forumPostMessage);
+
+            //globals.forum.goodgamery.post('botTrap', 'Help, I\'m, trapped in a bot trap factory');
+          }
           if (highest > globals.chatData.dieRolls[numSides].highest) {          
             var previousHighest = globals.chatData.dieRolls[numSides].highest;
             globals.chatData.dieRolls[numSides].highest = highest;
             bot.sendMessage(channel, 
-            '🎲 Record broken for the highest recorded d' + numSides + ' roll! Rolled a **' + highest + '**. Previous high: ' + previousHighest + ' 🎲')
+            '🎲 Record broken for the highest recorded d' + numSides + ' roll! Rolled a **' + highest + '**. Previous high: ' + previousHighest + ' 🎲');
+
+            var rollRegex = new RegExp('(^|\\W)(' + highest + ')($|\\W)');
+            var originalMessage = originalMessageBody.substr(0);            
+
+            originalMessage = originalMessage.replace(rollRegex, "$1[b]$2[/b]$3");
+            originalMessage = originalMessage.replace(/:game_die:/g, '🎲');
+            originalMessage = originalMessage.replace(/<@(\d+)>/, function(match, p1) { return getUser(p1, channel).username; });
+
+            var forumPostMessage = 'The record for the highest die roll has been broken!' 
+            forumPostMessage += '\n\n[quote="' + originalMessageAuthor + '"]';
+            forumPostMessage += originalMessage;
+            forumPostMessage += '[/quote]';
+            forumPostMessage += '\nNew highest roll: [b]' + highest + '[/b]';
+
+            console.log('Would post high roll message: ' + forumPostMessage);
           }              
         } catch (e) {
           log.error('Error saving dieroll data: ' + e);
@@ -186,6 +252,136 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
 
   globals.db.mongo.open()
     .then(mongo => initDieRollData(mongo, globals.config.dieroll.mongo.collection), e => log.error('Could not open mongodb: ' + e));
+
+  //=====//=====//=====//=====//=====//=====//=====//=====//=====//=====//=====//=====//=====//=====//=====//=====
+  globals.forum = (function() {
+    var loginToGoodGamery = function(username, password) {
+      const loginConfirmationMessage = 'You have been successfully logged in';
+
+      var opts = {
+        url: 'https://forums.goodgamery.com/ucp.php',
+        qs: { mode: 'login' },
+        method: 'POST',
+
+        form: {
+            username: username,
+            password: password,
+            viewonline: 'on',
+            redirect: 'index.php',
+            login: 'Login',
+            redirect: './ucp.php?mode=login'
+        }
+      };
+
+      return new Promise(function(resolve, reject) {
+        return request(opts)
+          .then((response) => {
+            //TODO: check cookies instead, if that's sufficient
+            if (response.body.indexOf(loginConfirmationMessage) !== -1) {
+              console.log('successfully logged in');
+              resolve();
+            } else {
+              console.log('login failed. body: ' + response.body);
+              reject(new Error('Did not receive expected response after login request. Response body: ' + response.body));
+            }
+          });
+        });
+    };
+
+    var makePost = function(forumId, threadId, message) {
+      log.debug('Making post: ' + message + ' to thread ' + threadId + ' in forum ' + forumId);
+      return new Promise(function(resolve, reject) {
+        try {
+          //TODO: convert to promise that rejects if expected tokens not found, etc.
+          const postPageOpts = {
+            url : 'https://forums.goodgamery.com/posting.php',
+            qs: {
+              mode: 'reply',
+              f: forumId,
+              t: threadId
+            },
+            method: 'GET'
+          };
+
+          return request(postPageOpts)
+            .then(response => {
+
+              var token = undefined;
+              var timestamp = undefined;
+
+              var tokenMatch = response.body.match(/name="form_token"\s+value="([\w]+)"/);
+              if (tokenMatch) { token = tokenMatch[1]; }
+
+              var timestampMatch = response.body.match(/name="creation_time"\s+value="(\d+)"/);
+              if (timestampMatch) { timestamp = timestampMatch[1]; }
+
+              if (token && timestamp) {
+                return { token : token, timestamp: timestamp };
+              } else {
+                reject('Did not receive expected response for posting page: ' + response);
+              }
+            })
+            .then(postPageData => { 
+              var token  = postPageData.token;
+              var timestamp = postPageData.timestamp;
+
+              var opts = {
+                url : 'https://forums.goodgamery.com/posting.php',
+                qs: {
+                 mode: 'reply',
+                 f: forumId,
+                 t: threadId
+               },
+               method: 'POST',
+               form: {
+                message: message,
+                post: 'Submit',
+                form_token: token,
+                creation_time: timestamp
+               }
+             };
+
+             return request(opts)
+              .then(undefined, response => console.log('UNABLE TO POST MESSAGE. HTTP RESPONSE CODE: ' + response.code + ' RESPONSE BODY:\n' + response.body));
+            });
+          } catch (e) { reject (e); }
+        });
+    };
+
+    return {
+      goodgamery: {
+        login: loginToGoodGamery,
+        post: function(threadKey, message) {
+          var forumConfig = globals.config.forum && globals.config.forum.goodgamery;
+          if (!forumConfig) {
+            log.error('Could not make post. Config globals.config.forum.goodgamery not found.');
+            return Promise.resolve(); 
+          }
+
+          var authInfo = forumConfig.authentication;
+
+          if (!authInfo || !authInfo.username || !authInfo.password) {
+            log.error('Could not make post. Config globals.config.forum.goodgamery.authentication did not have entries for username and/or password.');
+            return Promise.resolve(); 
+          }
+
+          var threadInfo = forumConfig.threads ? forumConfig.threads[threadKey] : undefined;
+
+          if (!threadInfo || !threadInfo.threadId || !threadInfo.forumId) {
+            log.error('Could not make post. Config globals.config.forum.goodgamery.threads did not have valid entry for thread key: ' + threadKey);
+            return Promise.resolve(); 
+          }
+
+          if (threadInfo && threadInfo.threadId & threadInfo.forumId) {
+            return loginToGoodGamery(authInfo.username, authInfo.password)
+             .then(() => makePost(threadInfo.forumId, threadInfo.threadId, message));
+          }
+        }
+      }
+    }
+  })();
+
+  //=====//=====//=====//=====//=====//=====//=====//=====//=====//=====//=====//=====//=====//=====//=====//=====
 
   var giphy_config = {
       "api_key": "dc6zaTOxFJmzC",
@@ -647,9 +843,10 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
         if (suffix.split("d").length <= 1) {
           var numSides = suffix || 10;
           var roll = d20.verboseRoll(numSides);
-          bot.sendMessage(msg.channel, msg.author + " rolled '" + suffix + "' for " + roll, () => {
+          var rollMsg = msg.author + " rolled '" + suffix + "' for " + roll;
+          bot.sendMessage(msg.channel, rollMsg, () => {
             setTimeout(function() {
-              globals.chatData.dieRolls.handleDieRolls(roll, numSides, msg.channel, msg.author.id);  
+              globals.chatData.dieRolls.handleDieRolls(roll, numSides, msg.channel, msg.author.id, bot.user.username, rollMsg);  
             }, 3000);
           });
         }  
@@ -660,10 +857,11 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
             var numSides = match[2];
          
             var rolls = d20.verboseRoll(suffix);
-            bot.sendMessage(msg.channel, ":game_die: " + msg.author + " rolled '" + match[0] + "' for " + rolls, () => {
+            var rollMsg = ":game_die: " + msg.author + " rolled '" + match[0] + "' for " + rolls;
+            bot.sendMessage(msg.channel, rollMsg, () => {
               if (rolls && rolls.length > 0)
               setTimeout(function() {
-                globals.chatData.dieRolls.handleDieRolls(rolls, numSides, msg.channel, msg.author.id);  
+                globals.chatData.dieRolls.handleDieRolls(rolls, numSides, msg.channel, msg.author.id, bot.user.username, rollMsg);  
               }, 3000);
             });
           } else {
@@ -784,13 +982,6 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
           log.debug('USER STATS: ' + JSON.stringify(stats));
           return stats;
         };
-          
-        var getUser = function(userId) {
-          log.debug('finding user ' + userId + ' for server ' + msg.channel.server);
-          log.ignore(' in members ' + (msg.channel.server ? utils.node.inspect(msg.channel.server.members) : undefined));
-          var user = msg.channel.server ? msg.channel.server.members.get('id', userId) : undefined;
-          return user ? user : { username: '**unknown user**'};
-        }
 
         globals.db.mongo.dumpTable(globals.config.dieroll.mongo.collection)  
           .then(allRolls => {
@@ -813,13 +1004,13 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
                 log.ignore('Roll stats: ' + JSON.stringify(stats, null, '\t'));
 
                 if (stats.count === 0) {
-                  statsMsg = '🎲 No d' + size +' rolls recorded for ' + getUser(userId) + ' 🎲';
+                  statsMsg = '🎲 No d' + size +' rolls recorded for ' + getUser(userId, msg.channel) + ' 🎲';
                 } else {
-                  statsMsg = '🎲 Stats for all **d' + size + '** die rolls recorded for ' + getUser(userId) + ' 🎲';
+                  statsMsg = '🎲 Stats for all **d' + size + '** die rolls recorded for ' + getUser(userId, msg.channel) + ' 🎲';
                   statsMsg += '\n\n • ';
-                  statsMsg += 'You have made **' + stats.count + '**  rolls since ' + getNormalizedDateString(new Date(stats.oldest.time));                  
+                  statsMsg += 'You have made **' + stats.count + '** rolls since ' + getNormalizedDateString(new Date(stats.oldest.time));                  
                   statsMsg += '\n\n • ';
-                  statsMsg += 'Your lowest roll on record is **' + stats.lowest.value + '**  on ' + getNormalizedDateString(new Date(stats.lowest.time));
+                  statsMsg += 'Your lowest roll on record is **' + stats.lowest.value + '** on ' + getNormalizedDateString(new Date(stats.lowest.time));
                   statsMsg += '\n\n • ';
                   statsMsg += 'Your highest roll on record is **' + stats.highest.value + '** on ' + getNormalizedDateString(new Date(stats.highest.time));
                   statsMsg += '\n\n • ';
@@ -832,17 +1023,17 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
 
                 statsMsg = '🎲 Stats for all recorded **d' + size + '** die rolls 🎲';
                 statsMsg += '\n\n • ';
-                statsMsg += 'Lowest roll on record is **' + stats.lowest.value + '** by ' + getUser(stats.lowest.user).username + ' on ' + getNormalizedDateString(new Date(stats.lowest.time));
+                statsMsg += 'Lowest roll on record is **' + stats.lowest.value + '** by ' + getUser(stats.lowest.user, msg.channel).username + ' on ' + getNormalizedDateString(new Date(stats.lowest.time));
                 statsMsg += '\n\n • ';
-                statsMsg += 'Highest roll on record is **' + stats.highest.value + '** by ' + getUser(stats.highest.user).username + ' on ' + getNormalizedDateString(new Date(stats.highest.time));
+                statsMsg += 'Highest roll on record is **' + stats.highest.value + '** by ' + getUser(stats.highest.user, msg.channel).username + ' on ' + getNormalizedDateString(new Date(stats.highest.time));
                 statsMsg += '\n\n • ';
-                statsMsg += 'Lowest average roll is **' + Math.round(stats.lowestAverage.value) + '** for ' + getUser(stats.lowestAverage.user).username;
+                statsMsg += 'Lowest average roll is **' + Math.round(stats.lowestAverage.value) + '** for ' + getUser(stats.lowestAverage.user, msg.channel).username;
                 statsMsg += '\n\n • ';
-                statsMsg += 'Highest average roll is **' + Math.round(stats.highestAverage.value) + '** for ' + getUser(stats.highestAverage.user).username;
+                statsMsg += 'Highest average roll is **' + Math.round(stats.highestAverage.value) + '** for ' + getUser(stats.highestAverage.user, msg.channel).username;
                 statsMsg += '\n\n • ';
-                statsMsg += 'Most average average roll is **' + Math.round(stats.averageAverage.value) + '** for ' + getUser(stats.averageAverage.user).username             
+                statsMsg += 'Most average average roll is **' + Math.round(stats.averageAverage.value) + '** for ' + getUser(stats.averageAverage.user, msg.channel).username             
                 statsMsg += '\n\n • ';
-                statsMsg += 'Most rolls recorded is **' + stats.mostRolls.value + '** for ' + getUser(stats.mostRolls.user).username;
+                statsMsg += 'Most rolls recorded is **' + stats.mostRolls.value + '** for ' + getUser(stats.mostRolls.user, msg.channel).username;
                 statsMsg += '\n\n • ';              
                 statsMsg += '**' + stats.totalCount + '** total rolls recorded since ' + getNormalizedDateString(new Date(stats.oldest.time));
               }
@@ -1169,7 +1360,7 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
           if (numDice !== results.length) {
             log.warn('Roll message had mismatched number of dice. reported # of dice: ' + sides + '; actual # of sides: ' + results.length + '; full message: ' + msg.content);
           } else {
-            globals.chatData.dieRolls.handleDieRolls(results, sides, msg.channel, userId);
+            globals.chatData.dieRolls.handleDieRolls(results, sides, msg.channel, userId, msg.author.username, msg.content);
           }
         }
     }
@@ -1293,6 +1484,13 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
   bot.login(AuthDetails.email, AuthDetails.password);
 });
 
+function getUser(userId, channel) {
+  log.debug('finding user ' + userId + ' for server ' + channel.server);
+  log.ignore(' in members ' + (channel.server ? utils.node.inspect(channel.server.members) : undefined));
+  var user = channel.server ? channel.server.members.get('id', userId) : undefined;
+  return user ? user : { username: '**unknown user**'};
+}
+
 function loadConfig(configName) {
   var configPath = './config/';
   var overridePath = configPath + 'overrides/';
@@ -1307,3 +1505,19 @@ function loadConfig(configName) {
     .then(undefined, () => utils.readFile(_config))
     .then(data => {  globals.config[configName] = data; }, function(e) {});
 }
+
+function request() {
+  var args = Array.prototype.slice.call(arguments);
+  return new Promise(function(resolve, reject) {
+    args.push(function(error, response, body) {
+      if (error) {
+        reject(error);
+      } else {
+        resolve(response);
+      }
+    });
+
+    return Request.apply(this, args);
+  });  
+}
+
