@@ -135,11 +135,21 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
           globals.chatData.dieRolls[numSides].lowest = globals.chatData.dieRolls[numSides].lowest ? globals.chatData.dieRolls[numSides].lowest: Number.MAX_SAFE_INTEGER;
 
           // JACKPOT ROLL (MIN/MAX POSSIBLE ROLL)
-          var targets = [1, numSides];
+          var targets = [1, parseInt(numSides)];
+
+          log.debug('Looking for jackpot roll ' + targets + ' in ' + results);
+
+          log.ignore('typeof targets: ' + typeof targets[1] + '; typeof results: ' + typeof results[1]);
+
           var matches = targets.filter(target => { 
             return results.indexOf(target) !== -1;
           });
+          log.debug('CONFIG: ' + JSON.stringify(globals.config.dieroll.matches));
+          var matchConfig = globals.config.dieroll.matches.find(match => match.sides == numSides);
+          log.debug('THIS CONFIG: ' + matchConfig);
+
           matches.forEach(match => { 
+            log.debug('FOUND A MATCH! ' + match);
             var user = getUser(userId, channel);
             bot.sendMessage(channel, '🎲 🎲 🎲 Rolled a **' + match + '** on ' + results.length + ' d' + numSides + (numDice > 1 ? 's' : '') + '! 🎲 🎲 🎲');
             var originalMessage = originalMessageBody.substr(0);
@@ -151,13 +161,14 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
             var forumPostMessage = ':alarm:  :alarm:  :alarm:  :alarm:  :alarm:  :alarm:';
             forumPostMessage += '\n\na winner has been decided ...';
             forumPostMessage += '\n\n[b]' + user.username + '[/b] has thrown the winning roll!';
-            forumPostMessage += '\n\nThe winner of the great d' + numSides + ' battle is...';
-            forumPostMessage += '\n\n[quote="' + originalMessageAuthor + '"]';
+            forumPostMessage += '\n\nThe winner of the great d' + numSides + ' battle is...';        
+            forumPostMessage +=  '\n\n[spoiler]';
+            forumPostMessage += '[quote="' + originalMessageAuthor + '"]';
             forumPostMessage += originalMessage;
-            forumPostMessage += '[/quote]';            
-            forumPostMessage +=  '\n[spoiler]:pmoparty:\n:pmoparty: :pmoparty:\n:pmoparty: :pmoparty: :pmoparty:\n:pmoparty: :pmoparty: :pmoparty: :pmoparty: :pmoparty:';
-            forumPostMessage += '\n[size=200][b][color=#BF0040]' + match + '[/color][/b][/size]';
-            forumPostMessage += '\n:pmoparty: :pmoparty: :pmoparty: :pmoparty: :pmoparty:\n:pmoparty: :pmoparty: :pmoparty: \n:pmoparty: :pmoparty:\n:pmoparty:';
+            forumPostMessage += '[/quote]';    
+            forumPostMessage += '\n:pmoparty: :pmoparty: :pmoparty: :pmoparty: :pmoparty:\n:pmoparty: :pmoparty: :pmoparty: :pmoparty: :pmoparty:\n:pmoparty: :pmoparty: :pmoparty: :pmoparty: :pmoparty:';
+            forumPostMessage += '\n[img]' + (match === 1 ? matchConfig.images.min : matchConfig.images.max) + '[/img]';
+            forumPostMessage += '\n:pmoparty: :pmoparty: :pmoparty: :pmoparty: :pmoparty:\n:pmoparty: :pmoparty: :pmoparty: :pmoparty: :pmoparty:\n:pmoparty: :pmoparty: :pmoparty: :pmoparty: :pmoparty:';
             forumPostMessage += '\n\n[youtube]https://www.youtube.com/watch?v=3GwjfUFyY6M[/youtube]';
             forumPostMessage += '\n\n' + match + ' is the best number! Well, played everybody![/spoiler]';
             forumPostMessage += '\n\n:alarm:  :alarm:  :alarm:  :alarm:  :alarm:  :alarm:';
@@ -203,7 +214,7 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
 
             var rollRegex = new RegExp('(^|\\W)(' + highest + ')($|\\W)');
             var originalMessage = originalMessageBody.substr(0);            
-            
+
             originalMessage = originalMessage.replace(rollRegex, "$1[b]$2[/b]$3");
             originalMessage = originalMessage.replace(/:game_die:/g, '🎲');
             originalMessage = originalMessage.replace(/<@(\d+)>/, function(match, p1) { return getUser(p1, channel).username; });
