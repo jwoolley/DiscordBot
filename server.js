@@ -139,8 +139,31 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
           var matches = targets.filter(target => { 
             return results.indexOf(target) !== -1;
           });
-          matches.forEach(match => bot.sendMessage(channel, 
-            '🎲 🎲 🎲 Rolled a **' + match + '** on ' + results.length + ' d' + numSides + (numDice > 1 ? 's' : '') + '! 🎲 🎲 🎲'));
+          matches.forEach(match => { 
+            var user = getUser(userId, channel);
+            bot.sendMessage(channel, '🎲 🎲 🎲 Rolled a **' + match + '** on ' + results.length + ' d' + numSides + (numDice > 1 ? 's' : '') + '! 🎲 🎲 🎲');
+            var originalMessage = originalMessageBody.substr(0);
+            var rollRegex = new RegExp('(^|\\W)(' + lowest + ')($|\\W)');
+            originalMessage = originalMessage.replace(rollRegex, "$1[b]$2[/b]$3");
+            originalMessage = originalMessage.replace(/:game_die:/g, '🎲');
+
+            originalMessage = originalMessage.replace(/<@(\d+)>/, function(match, p1) { return getUser(p1, channel).username; });
+            var forumPostMessage = ':alarm:  :alarm:  :alarm:  :alarm:  :alarm:  :alarm:';
+            forumPostMessage += '\n\na winner has been decided ...';
+            forumPostMessage += '\n\n[b]' + user.username + '[/b] has thrown the winning roll!';
+            forumPostMessage += '\n\nThe winner of the great d' + numSides + ' battle is...';
+            forumPostMessage += '\n\n[quote="' + originalMessageAuthor + '"]';
+            forumPostMessage += originalMessage;
+            forumPostMessage += '[/quote]';            
+            forumPostMessage +=  '\n[spoiler]:pmoparty:\n:pmoparty: :pmoparty:\n:pmoparty: :pmoparty: :pmoparty:\n:pmoparty: :pmoparty: :pmoparty: :pmoparty: :pmoparty:';
+            forumPostMessage += '\n[size=200][b][color=#BF0040]' + match + '[/color][/b][/size]';
+            forumPostMessage += '\n:pmoparty: :pmoparty: :pmoparty: :pmoparty: :pmoparty:\n:pmoparty: :pmoparty: :pmoparty: \n:pmoparty: :pmoparty:\n:pmoparty:';
+            forumPostMessage += '\n\n[youtube]https://www.youtube.com/watch?v=3GwjfUFyY6M[/youtube]';
+            forumPostMessage += '\n\n' + match + ' is the best number! Well, played everybody![/spoiler]';
+            forumPostMessage += '\n\n:alarm:  :alarm:  :alarm:  :alarm:  :alarm:  :alarm:';
+
+            console.log('Would post jackpot message: ' + forumPostMessage);
+          });
 
           // HISTORICAL HIGH OR LOW ROLL
           var sorted = results.sort((a,b) => a - b);
@@ -157,13 +180,14 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
             '🎲 Record broken for the lowest recorded d' + numSides + ' roll! Rolled a **' + lowest + '**. Previous low: ' + previousLowest + ' 🎲');
 
             var rollRegex = new RegExp('(^|\\W)(' + lowest + ')($|\\W)');
-            originalMessageBody = originalMessageBody.replace(rollRegex, "$1[b]$2[/b]$3");
-            originalMessageBody = originalMessageBody.replace(/:game_die:/g, '🎲');
+            var originalMessage = originalMessageBody.substr(0);            
+            originalMessage = originalMessage.replace(rollRegex, "$1[b]$2[/b]$3");
+            originalMessage = originalMessage.replace(/:game_die:/g, '🎲');
 
-            originalMessageBody = originalMessageBody.replace(/<@(\d+)>/, function(match, p1) { return getUser(p1, channel).username; });
+            originalMessage = originalMessage.replace(/<@(\d+)>/, function(match, p1) { return getUser(p1, channel).username; });
             var forumPostMessage = 'The record for the lowest die roll has been broken!' 
             forumPostMessage += '\n\n[quote="' + originalMessageAuthor + '"]';
-            forumPostMessage += originalMessageBody;
+            forumPostMessage += originalMessage;
             forumPostMessage += '[/quote]';
             forumPostMessage += '\nNew lowest roll: [b]' + lowest + '[/b]';
 
@@ -178,13 +202,15 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
             '🎲 Record broken for the highest recorded d' + numSides + ' roll! Rolled a **' + highest + '**. Previous high: ' + previousHighest + ' 🎲');
 
             var rollRegex = new RegExp('(^|\\W)(' + highest + ')($|\\W)');
-            originalMessageBody = originalMessageBody.replace(rollRegex, "$1[b]$2[/b]$3");
-            originalMessageBody = originalMessageBody.replace(/:game_die:/g, '🎲');
-            originalMessageBody = originalMessageBody.replace(/<@(\d+)>/, function(match, p1) { return getUser(p1, channel).username; });
+            var originalMessage = originalMessageBody.substr(0);            
+            
+            originalMessage = originalMessage.replace(rollRegex, "$1[b]$2[/b]$3");
+            originalMessage = originalMessage.replace(/:game_die:/g, '🎲');
+            originalMessage = originalMessage.replace(/<@(\d+)>/, function(match, p1) { return getUser(p1, channel).username; });
 
             var forumPostMessage = 'The record for the highest die roll has been broken!' 
             forumPostMessage += '\n\n[quote="' + originalMessageAuthor + '"]';
-            forumPostMessage += originalMessageBody;
+            forumPostMessage += originalMessage;
             forumPostMessage += '[/quote]';
             forumPostMessage += '\nNew highest roll: [b]' + highest + '[/b]';
 
