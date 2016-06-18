@@ -137,23 +137,16 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
           // JACKPOT ROLL (MIN/MAX POSSIBLE ROLL)
           var targets = [1, parseInt(numSides)];
 
-          log.debug('Looking for jackpot roll ' + targets + ' in ' + results);
-
-          log.ignore('typeof targets: ' + typeof targets[1] + '; typeof results: ' + typeof results[1]);
-
           var matches = targets.filter(target => { 
             return results.indexOf(target) !== -1;
           });
-          log.debug('CONFIG: ' + JSON.stringify(globals.config.dieroll.matches));
           var matchConfig = globals.config.dieroll.matches.find(match => match.sides == numSides);
-          log.debug('THIS CONFIG: ' + matchConfig);
 
           matches.forEach(match => { 
-            log.debug('FOUND A MATCH! ' + match);
             var user = getUser(userId, channel);
             bot.sendMessage(channel, '🎲 🎲 🎲 Rolled a **' + match + '** on ' + results.length + ' d' + numSides + (numDice > 1 ? 's' : '') + '! 🎲 🎲 🎲');
             var originalMessage = originalMessageBody.substr(0);
-            var rollRegex = new RegExp('(^|\\W)(' + lowest + ')($|\\W)');
+            var rollRegex = new RegExp('(^|\\W)(' + match + ')($|\\W)');
             originalMessage = originalMessage.replace(rollRegex, "$1[b]$2[/b]$3");
             originalMessage = originalMessage.replace(/:game_die:/g, '🎲');
 
@@ -173,7 +166,7 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
             forumPostMessage += '\n\n' + match + ' is the best number! Well, played everybody![/spoiler]';
             forumPostMessage += '\n\n:alarm:  :alarm:  :alarm:  :alarm:  :alarm:  :alarm:';
 
-            console.log('Would post jackpot message: ' + forumPostMessage);
+            globals.forum.goodgamery.post('dieRolls', forumPostMessage);
           });
 
           // HISTORICAL HIGH OR LOW ROLL
@@ -202,9 +195,7 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
             forumPostMessage += '[/quote]';
             forumPostMessage += '\nNew lowest roll: [b]' + lowest + '[/b]';
 
-            console.log('Would post low roll message: ' + forumPostMessage);
-
-            //globals.forum.goodgamery.post('botTrap', 'Help, I\'m, trapped in a bot trap factory');
+            globals.forum.goodgamery.post('dieRolls', forumPostMessage);
           }
           if (highest > globals.chatData.dieRolls[numSides].highest) {          
             var previousHighest = globals.chatData.dieRolls[numSides].highest;
@@ -225,7 +216,7 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
             forumPostMessage += '[/quote]';
             forumPostMessage += '\nNew highest roll: [b]' + highest + '[/b]';
 
-            console.log('Would post high roll message: ' + forumPostMessage);
+            globals.forum.goodgamery.post('dieRolls', forumPostMessage);
           }              
         } catch (e) {
           log.error('Error saving dieroll data: ' + e);
