@@ -908,6 +908,7 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
             return aggregate;
           }, { oldest: undefined, lowest: undefined, highest: undefined, userRolls: {} });
 
+          var minRollsForAverage = 10;
           var userStats = Object.keys(aggregate.userRolls).reduce((userAggregate, user) => {
             var rolls = aggregate.userRolls[user];
             var averageRoll = rolls.reduce((total, roll) => total + roll.value, 0) / rolls.length;
@@ -915,13 +916,13 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
             if (userAggregate.mostRolls === undefined || rolls.length > userAggregate.mostRolls.value) {
               userAggregate.mostRolls = { user: user, value: rolls.length };
             }
-            if (userAggregate.lowestAverage === undefined || averageRoll < userAggregate.lowestAverage.value) {
+            if (userAggregate.lowestAverage === undefined || rolls.length >= minRollsForAverage && averageRoll < userAggregate.lowestAverage.value) {
               userAggregate.lowestAverage = { user: user, value: averageRoll };
             }
-            if (userAggregate.highestAverage === undefined || averageRoll > userAggregate.highestAverage.value) {
+            if (userAggregate.highestAverage === undefined || rolls.length >= minRollsForAverage && averageRoll > userAggregate.highestAverage.value) {
               userAggregate.highestAverage = { user: user, value: averageRoll };
             }
-            if (userAggregate.averageAverage === undefined || Math.abs(size/2 - averageRoll) < Math.abs(size/2 - userAggregate.averageAverage.value)) {
+            if (userAggregate.averageAverage === undefined || rolls.length >= minRollsForAverage && Math.abs(size/2 - averageRoll) < Math.abs(size/2 - userAggregate.averageAverage.value)) {
               userAggregate.averageAverage = { user: user, value: averageRoll };
             }                  
             return userAggregate;
