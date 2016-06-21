@@ -2,15 +2,18 @@
   "users" : {
     "approved" : [
       { 
-        "nickname": "ggbot",
-        "id": "163813963551866880"
+        "nickname": "rollmaster",
+        "id": "1234567890"
       }
     ]
   },
   "matches":  [
     { 
-      "sides": 1000,
-      "values": [1, 1000] 
+      "sides": 1000
+      "images": {
+        "min": "img_url_for_min_roll",
+        "max": "img_url_for_max_roll"
+      }
     }
   ],
   "mongo": {
