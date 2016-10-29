@@ -237,17 +237,6 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
     });
   };
 
- console.log('DEBUGGING...');
-
- console.log('GLOBALS: ');
- console.log(globals);
- console.log('GLOBALS.DB: ');
- console.log(globals.db); 
- console.log('GLOBALS.DB.MONGO: ');
- console.log(globals.db.mongo);
- console.log('globals.config: ')
- console.log(globals.config);
-
   globals.db.mongo = new MongoDb(globals.config.dieroll.mongo.host,
     globals.config.dieroll.mongo.port, globals.config.dieroll.mongo.db);
 
