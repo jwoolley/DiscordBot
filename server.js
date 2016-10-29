@@ -42,6 +42,7 @@ var log = {
 
 var configs = ['server', 'auth', 'permissions', 'dieroll', 'config', 'forum'];
 Promise.all(configs.map(config => loadConfig(config))).then(() => { 
+
   // Get authentication data
   var AuthDetails = globals.config.auth;
 
@@ -235,6 +236,17 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
       }
     });
   };
+
+ console.log('DEBUGGING...');
+
+ console.log('GLOBALS: ');
+ console.log(globals);
+ console.log('GLOBALS.DB: ');
+ console.log(globals.db); 
+ console.log('GLOBALS.DB.MONGO: ');
+ console.log(globals.db.mongo);
+ console.log('globals.config: ')
+ console.log(globals.config);
 
   globals.db.mongo = new MongoDb(globals.config.dieroll.mongo.host,
     globals.config.dieroll.mongo.port, globals.config.dieroll.mongo.db);
@@ -432,6 +444,8 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
 
   var aliases;
   var messagebox;
+
+  var commandList;
 
   var commands = {
     "gif": {
@@ -825,9 +839,63 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
         bot.setChannelTopic(msg.channel,suffix);
       }
     },
-    "testroll": {
+    'enableCommand': {
+      usage: "[command]",
+      description: "enable a command for all users, if allowed",
+      process: function(bot,msg,suffix) {
+        var command = suffix;
+
+        var msgResponse = '';
+
+        if (!command) {
+          return;
+        } else if (!commandList[command]) {
+          msgResponse = "Command '" + command + "' not recongized.";
+        } else if (!commandList[command].hasConfigurablePermsissions) {
+          msgResponse = "Command '" + command + "' can't be enabled.";
+        } else {         
+          commandList[command].permissions = commandList[command].permissions || [];            
+
+          if (commandList[command].permissions.indexOf('all') == -1) {
+            commandList[command].permissions.push('all');
+            msgResponse =  "Command '" + command + "' enabled.";
+          } else {
+            msgResponse =  "Command '" + command + "' is already enabled.";
+          }
+        }
+        bot.sendMessage(msg.channel, msgResponse);
+      }  
+    },
+    'disableCommand': {
+      usage: "[command]",
+      description: "disable a command for all users, if allowed",      
+      process: function(bot,msg,suffix) {
+        var command = suffix;
+        var msgResponse = '';
+
+        if (!command) {
+          return;
+        } else if (!commandList[command]) {
+          msgResponse = "Command '" + command + "' not recongized.";
+        } else if (!commandList[command].hasConfigurablePermsissions) {
+          msgResponse = "Command '" + command + "' can't be disabled.";
+        } else {                   
+          var perms = commandList[command].permissions;
+          if (perms && perms.indexOf('all') !== -1) {
+            perms.splice(perms.indexOf('all'), 1);
+            msgResponse =  "Command '" + command + "' disabled."
+          } else {
+            msgResponse =  "Command '" + command + "' is already disabled."
+          }
+        }
+        bot.sendMessage(msg.channel, msgResponse);
+      }
+    },
+    "roll": {
       usage: "[# of sides] or [# of dice]d[# of sides]( + [# of dice]d[# of sides] + ...)",
       description: "roll one die with x sides, or multiple dice using d20 syntax. Default value is 10",
+      permissions: ['all'],
+      hasConfigurablePermsissions: true,
       process: function(bot,msg,suffix) {
         if (suffix.split("d").length <= 1) {
           var numSides = suffix || 10;
@@ -1216,11 +1284,15 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
       });
   }
 
+  commandList = {};
+  Object.keys(commands).forEach(cmd => {
+    commandList[cmd] = commands[cmd];
+  });
 
   var bot = new Discord.Client();
 
   bot.on("ready", function () {
-    loadFeeds();
+    // loadFeeds();
     console.log("Ready to begin! Serving in " + bot.channels.length + " channels");
     require("./plugins.js").init();
   });
@@ -1491,6 +1563,34 @@ function loadConfig(configName) {
     .then(undefined, () => utils.readFile(_config))
     .then(data => {  globals.config[configName] = data; }, function(e) {});
 }
+
+
+// function loadConfig(configName) {
+//   var configPath = './config/';
+//   var overridePath = configPath + 'overrides/';
+//   var _config = configPath + configName + '.json';
+//   var _override = overridePath + configName + '.json';
+
+//   console.log('Attempting to load config override ' + configName + ' from ' + _override);
+
+//   if (globals.config.hasOwnProperty(configName)) {
+//     console.log('Config already loaded:');
+//     console.log(config[configName]);
+//     return Promise.resolve(config[configName]);
+//   }
+
+//   return utils.readFile(_override)
+//     .then(
+//       data => { console.log('Loaded ' + __override); return data; }, () => {
+//         console.log('Override not found. Attempting to load default config: ' + _config);
+//         return utils.readFile(_config);
+//      })
+//     .then(data => { 
+//       console.log('Loaded :');
+//       console.log(data); 
+//       globals.config[configName] = data;
+//     }, function(e) {});
+// }
 
 function request() {
   var args = Array.prototype.slice.call(arguments);
