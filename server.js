@@ -1385,7 +1385,7 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
         var avatar = avatars[suffix];
           bot.sendMessage(msg.channel, randomElement(beetlejuiceMessages.banished), function() {
             bot.setAvatar(avatars.baggle, function() {
-              bot.sendMessage(msg.channel, '!say :coffin: :skull: :coffin: :skull: :coffin: :skull: :coffin:', function() {
+              bot.sendMessage(msg.channel, ':coffin: :skull: :coffin: :skull: :coffin: :skull: :coffin:', function() {
               setTimeout(function() {
                 bot.sendMessage(msg.channel, randomElement(beetlejuiceMessages.done));
               }, 2000);
