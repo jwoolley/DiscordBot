@@ -883,7 +883,8 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
     "roll": {
       usage: "[# of sides] or [# of dice]d[# of sides]( + [# of dice]d[# of sides] + ...)",
       description: "roll one die with x sides, or multiple dice using d20 syntax. Default value is 10",
-      permissions: ['all'],
+      // permissions: ['all'],
+      permissions: [''],
       hasConfigurablePermsissions: true,
       process: function(bot,msg,suffix) {
         if (suffix.split("d").length <= 1) {
