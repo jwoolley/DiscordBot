@@ -1,0 +1,4 @@
+# DEPLOY NEW VERSION TO AWS
+# * first, commit changes to the current (aws) git repo, then
+eb deploy
+

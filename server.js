@@ -880,43 +880,42 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
         bot.sendMessage(msg.channel, msgResponse);
       }
     },
-    "roll": {
-      usage: "[# of sides] or [# of dice]d[# of sides]( + [# of dice]d[# of sides] + ...)",
-      description: "roll one die with x sides, or multiple dice using d20 syntax. Default value is 10",
-      // permissions: ['all'],
-      permissions: [''],
-      hasConfigurablePermsissions: true,
-      process: function(bot,msg,suffix) {
-        if (suffix.split("d").length <= 1) {
-          var numSides = suffix || 10;
-          var roll = d20.verboseRoll(numSides);
-          var rollMsg = msg.author + " rolled '" + suffix + "' for " + roll;
-          bot.sendMessage(msg.channel, rollMsg, () => {
-            setTimeout(function() {
-              globals.chatData.dieRolls.handleDieRolls(roll, numSides, msg.channel, msg.author.id, bot.user.username, rollMsg);  
-            }, 3000);
-          });
-        }  
-        else {
-          var match = suffix.match(/^\s*(\d+)?d(\d+)\s*/);
-          if (match) {
-            var numDice = match[1] ? match[1] : 1;
-            var numSides = match[2];
+    // "roll": {
+    //   usage: "[# of sides] or [# of dice]d[# of sides]( + [# of dice]d[# of sides] + ...)",
+    //   description: "roll one die with x sides, or multiple dice using d20 syntax. Default value is 10",
+    //   permissions: ['all'],
+    //   hasConfigurablePermsissions: true,
+    //   process: function(bot,msg,suffix) {
+    //     if (suffix.split("d").length <= 1) {
+    //       var numSides = suffix || 10;
+    //       var roll = d20.verboseRoll(numSides);
+    //       var rollMsg = msg.author + " rolled '" + suffix + "' for " + roll;
+    //       bot.sendMessage(msg.channel, rollMsg, () => {
+    //         setTimeout(function() {
+    //           globals.chatData.dieRolls.handleDieRolls(roll, numSides, msg.channel, msg.author.id, bot.user.username, rollMsg);  
+    //         }, 3000);
+    //       });
+    //     }  
+    //     else {
+    //       var match = suffix.match(/^\s*(\d+)?d(\d+)\s*/);
+    //       if (match) {
+    //         var numDice = match[1] ? match[1] : 1;
+    //         var numSides = match[2];
          
-            var rolls = d20.verboseRoll(suffix);
-            var rollMsg = ":game_die: " + msg.author + " rolled '" + match[0] + "' for " + rolls;
-            bot.sendMessage(msg.channel, rollMsg, () => {
-              if (rolls && rolls.length > 0)
-              setTimeout(function() {
-                globals.chatData.dieRolls.handleDieRolls(rolls, numSides, msg.channel, msg.author.id, bot.user.username, rollMsg);  
-              }, 3000);
-            });
-          } else {
-            bot.sendMessage(msg.channel, msg.author + " :game_die: invalid die roll specified! :game_die:");
-          }
-        }
-      }
-    },
+    //         var rolls = d20.verboseRoll(suffix);
+    //         var rollMsg = ":game_die: " + msg.author + " rolled '" + match[0] + "' for " + rolls;
+    //         bot.sendMessage(msg.channel, rollMsg, () => {
+    //           if (rolls && rolls.length > 0)
+    //           setTimeout(function() {
+    //             globals.chatData.dieRolls.handleDieRolls(rolls, numSides, msg.channel, msg.author.id, bot.user.username, rollMsg);  
+    //           }, 3000);
+    //         });
+    //       } else {
+    //         bot.sendMessage(msg.channel, msg.author + " :game_die: invalid die roll specified! :game_die:");
+    //       }
+    //     }
+    //   }
+    // },
     "username": {
       usage: "<userid>",
       description: "debugging ability to get user object from userid",
