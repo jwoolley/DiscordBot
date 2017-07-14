@@ -10,6 +10,8 @@ var utils = require('./lib/utils');
 
 var Request = require('request').defaults({jar: true});
   
+var MtgNewsBot = require('mtgnewsbot');
+
 var http = require('http');
 http.createServer(function(request, response) {
   response.writeHead(200, {"Content-Type": "text/plain"});
@@ -510,6 +512,25 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
           if (channel) {
             bot.sendMessage(channel, message);
           }
+        }
+      },
+      "mtgheadlines": {
+        description: "bot returns a list of randomly generated MTG headlines",
+        process: function(bot,msg){
+          const NUM_MTG_HEADLINES = 10;
+
+          const getNormalizedDateString = function(date) {
+            return date.toLocaleDateString('fullwide', { month: 'long', day: 'numeric', year: 'numeric' } );
+          };
+
+          const headlines = MtgNewsBot.generateHeadlines(NUM_MTG_HEADLINES);
+
+          const message = headlines.reduce((list, headline) => {
+            return list + '\n\n • ' + headline;
+          }, '**Latest Magic: the Gathering News Headlines for ' + getNormalizedDateString(new Date()) + '**');
+          console.log(message);
+
+          bot.sendMessage(msg.channel,message);
         }
       },
     "announce": {
