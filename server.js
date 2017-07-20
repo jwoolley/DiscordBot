@@ -439,6 +439,14 @@ Promise.all(configs.map(config => loadConfig(config))).then(() => {
   var commandList;
 
   var commands = {
+    "testAttach": {
+      description: "uploads a thing. maybe.",
+      process: function(bot, msg, suffix) {
+        const fullPath = require('path').resolve('./tmp/dd729d3b-32a8-4c5d-87ee-9f2b08952569.png');
+        console.log('attempting to attach: ' + fullPath);
+        bot.sendMessage(msg.channel, 'file://' + fullPath);
+      }
+    },
     "gif": {
       usage: "<image tags>",
           description: "returns a random gif matching the tags passed",
